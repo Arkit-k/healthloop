@@ -82,34 +82,6 @@ export async function searchAppointments(searchParams: AppointmentSearchParams, 
   }
 }
 
-export async function fetchAppointmentById(appointmentId: string, accessToken: string) {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
-    const apiKey = process.env.API_KEY;
-
-    if (!baseUrl || !apiKey) {
-      throw new Error('Missing required environment variables');
-    }
-
-    const response = await fetch(`${baseUrl}/ema/fhir/v2/Appointment/${appointmentId}`, {
-      method: 'GET',
-      headers: {
-        'accept': 'application/fhir+json',
-        'authorization': `Bearer ${accessToken}`,
-        'x-api-key': apiKey
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Appointment fetch failed: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return { success: true, data };
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to fetch appointment' };
-  }
-}
 
 export async function createAppointment(appointmentData: Record<string, unknown>, accessToken: string) {
   try {
@@ -182,15 +154,12 @@ export async function cancelAppointment(appointmentId: string, accessToken: stri
       throw new Error('Missing required environment variables');
     }
 
-    // First fetch the appointment to get current data
-    const fetchResult = await fetchAppointmentById(appointmentId, accessToken);
-    if (!fetchResult.success) {
-      return fetchResult;
-    }
-
-    const appointmentData = fetchResult.data;
-    // Update status to cancelled
-    appointmentData.status = 'cancelled';
+    // Create minimal appointment data with cancelled status
+    const appointmentData = {
+      resourceType: 'Appointment',
+      id: appointmentId,
+      status: 'cancelled'
+    };
 
     const response = await fetch(`${baseUrl}/ema/fhir/v2/Appointment/${appointmentId}`, {
       method: 'PUT',
@@ -214,35 +183,6 @@ export async function cancelAppointment(appointmentId: string, accessToken: stri
   }
 }
 
-export async function checkProviderAvailability(providerId: string, date: string, accessToken: string) {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
-    const apiKey = process.env.API_KEY;
-
-    if (!baseUrl || !apiKey) {
-      throw new Error('Missing required environment variables');
-    }
-
-    // Check for existing appointments on the given date for this provider
-    const response = await fetch(`${baseUrl}/ema/fhir/v2/Appointment?practitioner=${providerId}&date=${date}`, {
-      method: 'GET',
-      headers: {
-        'accept': 'application/fhir+json',
-        'authorization': `Bearer ${accessToken}`,
-        'x-api-key': apiKey
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Provider availability check failed: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return { success: true, data };
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to check provider availability' };
-  }
-}
 
 export async function checkAppointmentConflicts(providerId: string, patientId: string, startTime: string, endTime: string, excludeAppointmentId?: string, accessToken?: string) {
   try {

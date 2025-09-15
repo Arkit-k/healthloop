@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { generateTokens } from '../../actions/tokenActions';
-import { fetchAppointments, searchAppointments, createAppointment, updateAppointment, cancelAppointment, checkProviderAvailability, checkAppointmentConflicts } from '../../actions/appointmentActions';
+import { fetchAppointments, searchAppointments, createAppointment, updateAppointment, cancelAppointment, checkAppointmentConflicts } from '../../actions/appointmentActions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
