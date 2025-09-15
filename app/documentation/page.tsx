@@ -84,7 +84,7 @@ export default function DocumentationPage() {
                         <div className="space-y-2 text-sm">
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Base URL:</span>
-                            <code className="bg-muted px-2 py-1 rounded text-xs">https://stage.ema-api.com/ema-dev/firm/apiportal/ema/fhir/v2</code>
+                            <code className="bg-muted px-2 py-1 rounded text-xs">https://stage.ema-api.com/ema-dev/firm</code>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Version:</span>
@@ -741,7 +741,7 @@ export async function fetchPatients(accessToken: string, customCredentials?: { b
                           <div className="bg-muted p-4 rounded-lg">
                             <pre className="text-sm text-foreground">
 {`{
-  "baseUrl": "https://stage.ema-api.com/ema-dev/firm/apiportal/ema/fhir/v2",
+  "baseUrl": "https://stage.ema-api.com/ema-dev/firm",
   "apiKey": "your-api-key-here",
   "clientId": "your-client-id",
   "clientSecret": "your-client-secret"
