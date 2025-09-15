@@ -65,34 +65,54 @@ export default function Home() {
         {error && <p className="text-red-500">Error: {error}</p>}
 
         {tokens && (
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Token Details</CardTitle>
-              <CardDescription>
-                OAuth 2.0 access token for FHIR API authentication
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-sm font-medium">Access Token:</label>
-                  <p className="break-all text-sm mt-1 font-mono bg-muted p-2 rounded">{tokens.access_token}</p>
+          <div className="space-y-6">
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle>Token Details</CardTitle>
+                <CardDescription>
+                  OAuth 2.0 access token for FHIR API authentication
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium">Access Token:</label>
+                    <p className="break-all text-sm mt-1 font-mono bg-muted p-2 rounded">{tokens.access_token}</p>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Token Type:</span>
+                    <span className="text-sm text-muted-foreground">{tokens.token_type}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Expires In:</span>
+                    <span className="text-sm text-muted-foreground">{tokens.expires_in} seconds</span>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Refresh Token:</label>
+                    <p className="break-all text-sm mt-1 font-mono bg-muted p-2 rounded">{tokens.refresh_token}</p>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium">Token Type:</span>
-                  <span className="text-sm text-muted-foreground">{tokens.token_type}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium">Expires In:</span>
-                  <span className="text-sm text-muted-foreground">{tokens.expires_in} seconds</span>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Refresh Token:</label>
-                  <p className="break-all text-sm mt-1 font-mono bg-muted p-2 rounded">{tokens.refresh_token}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Button
+                onClick={() => router.push('/dashboard/patient')}
+                size="lg"
+                className="flex-1"
+              >
+                Patient Dashboard
+              </Button>
+              <Button
+                onClick={() => router.push('/dashboard/appointments')}
+                size="lg"
+                variant="outline"
+                className="flex-1"
+              >
+                Appointments Dashboard
+              </Button>
+            </div>
+          </div>
         )}
 
       </main>

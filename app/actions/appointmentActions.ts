@@ -110,3 +110,223 @@ export async function fetchAppointmentById(appointmentId: string, accessToken: s
     return { success: false, error: err instanceof Error ? err.message : 'Failed to fetch appointment' };
   }
 }
+
+export async function createAppointment(appointmentData: Record<string, unknown>, accessToken: string) {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
+    const apiKey = process.env.API_KEY;
+
+    if (!baseUrl || !apiKey) {
+      throw new Error('Missing required environment variables');
+    }
+
+    const response = await fetch(`${baseUrl}/ema/fhir/v2/Appointment`, {
+      method: 'POST',
+      headers: {
+        'accept': 'application/fhir+json',
+        'content-type': 'application/fhir+json',
+        'authorization': `Bearer ${accessToken}`,
+        'x-api-key': apiKey
+      },
+      body: JSON.stringify(appointmentData)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Appointment creation failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return { success: true, data };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to create appointment' };
+  }
+}
+
+export async function updateAppointment(appointmentId: string, appointmentData: Record<string, unknown>, accessToken: string) {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
+    const apiKey = process.env.API_KEY;
+
+    if (!baseUrl || !apiKey) {
+      throw new Error('Missing required environment variables');
+    }
+
+    const response = await fetch(`${baseUrl}/ema/fhir/v2/Appointment/${appointmentId}`, {
+      method: 'PUT',
+      headers: {
+        'accept': 'application/fhir+json',
+        'content-type': 'application/fhir+json',
+        'authorization': `Bearer ${accessToken}`,
+        'x-api-key': apiKey
+      },
+      body: JSON.stringify(appointmentData)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Appointment update failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return { success: true, data };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to update appointment' };
+  }
+}
+
+export async function cancelAppointment(appointmentId: string, accessToken: string) {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
+    const apiKey = process.env.API_KEY;
+
+    if (!baseUrl || !apiKey) {
+      throw new Error('Missing required environment variables');
+    }
+
+    // First fetch the appointment to get current data
+    const fetchResult = await fetchAppointmentById(appointmentId, accessToken);
+    if (!fetchResult.success) {
+      return fetchResult;
+    }
+
+    const appointmentData = fetchResult.data;
+    // Update status to cancelled
+    appointmentData.status = 'cancelled';
+
+    const response = await fetch(`${baseUrl}/ema/fhir/v2/Appointment/${appointmentId}`, {
+      method: 'PUT',
+      headers: {
+        'accept': 'application/fhir+json',
+        'content-type': 'application/fhir+json',
+        'authorization': `Bearer ${accessToken}`,
+        'x-api-key': apiKey
+      },
+      body: JSON.stringify(appointmentData)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Appointment cancellation failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return { success: true, data };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to cancel appointment' };
+  }
+}
+
+export async function checkProviderAvailability(providerId: string, date: string, accessToken: string) {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
+    const apiKey = process.env.API_KEY;
+
+    if (!baseUrl || !apiKey) {
+      throw new Error('Missing required environment variables');
+    }
+
+    // Check for existing appointments on the given date for this provider
+    const response = await fetch(`${baseUrl}/ema/fhir/v2/Appointment?practitioner=${providerId}&date=${date}`, {
+      method: 'GET',
+      headers: {
+        'accept': 'application/fhir+json',
+        'authorization': `Bearer ${accessToken}`,
+        'x-api-key': apiKey
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Provider availability check failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return { success: true, data };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to check provider availability' };
+  }
+}
+
+export async function checkAppointmentConflicts(providerId: string, patientId: string, startTime: string, endTime: string, excludeAppointmentId?: string, accessToken?: string) {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
+    const apiKey = process.env.API_KEY;
+
+    if (!baseUrl || !apiKey) {
+      throw new Error('Missing required environment variables');
+    }
+
+    // Check for overlapping appointments for the provider
+    const providerConflicts = await fetch(`${baseUrl}/ema/fhir/v2/Appointment?practitioner=${providerId}&date=${startTime.split('T')[0]}`, {
+      method: 'GET',
+      headers: {
+        'accept': 'application/fhir+json',
+        'authorization': `Bearer ${accessToken}`,
+        'x-api-key': apiKey
+      }
+    });
+
+    // Check for overlapping appointments for the patient
+    const patientConflicts = await fetch(`${baseUrl}/ema/fhir/v2/Appointment?patient=${patientId}&date=${startTime.split('T')[0]}`, {
+      method: 'GET',
+      headers: {
+        'accept': 'application/fhir+json',
+        'authorization': `Bearer ${accessToken}`,
+        'x-api-key': apiKey
+      }
+    });
+
+    if (!providerConflicts.ok || !patientConflicts.ok) {
+      throw new Error('Conflict check failed');
+    }
+
+    const providerData = await providerConflicts.json();
+    const patientData = await patientConflicts.json();
+
+    const conflicts = [];
+
+    // Check provider conflicts
+    if (providerData.entry) {
+      for (const entry of providerData.entry) {
+        const appointment = entry.resource;
+        if (excludeAppointmentId && appointment.id === excludeAppointmentId) continue;
+
+        if (hasTimeOverlap(startTime, endTime, appointment.start, appointment.end)) {
+          conflicts.push({
+            type: 'provider',
+            appointment: appointment,
+            message: `Provider has conflicting appointment: ${appointment.description || 'Appointment'}`
+          });
+        }
+      }
+    }
+
+    // Check patient conflicts
+    if (patientData.entry) {
+      for (const entry of patientData.entry) {
+        const appointment = entry.resource;
+        if (excludeAppointmentId && appointment.id === excludeAppointmentId) continue;
+
+        if (hasTimeOverlap(startTime, endTime, appointment.start, appointment.end)) {
+          conflicts.push({
+            type: 'patient',
+            appointment: appointment,
+            message: `Patient has conflicting appointment: ${appointment.description || 'Appointment'}`
+          });
+        }
+      }
+    }
+
+    return { success: true, conflicts, hasConflicts: conflicts.length > 0 };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to check appointment conflicts' };
+  }
+}
+
+function hasTimeOverlap(start1: string, end1: string, start2?: string, end2?: string): boolean {
+  if (!start2 || !end2) return false;
+
+  const s1 = new Date(start1).getTime();
+  const e1 = new Date(end1).getTime();
+  const s2 = new Date(start2).getTime();
+  const e2 = new Date(end2).getTime();
+
+  return (s1 < e2 && e1 > s2);
+}

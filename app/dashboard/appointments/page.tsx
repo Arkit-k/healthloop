@@ -1,16 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { generateTokens } from '../../actions/tokenActions';
-import { fetchAppointments, searchAppointments } from '../../actions/appointmentActions';
+import { fetchAppointments, searchAppointments, createAppointment, updateAppointment, cancelAppointment, checkProviderAvailability, checkAppointmentConflicts } from '../../actions/appointmentActions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { useToast, errorToast } from '@/components/toast';
+import { useToast, successToast, errorToast } from '@/components/toast';
+import { Pagination } from '@/components/ui/pagination';
 
 interface TokenData {
   access_token: string;
@@ -42,13 +45,35 @@ interface Bundle {
   entry?: BundleEntry[];
 }
 
+interface AvailabilitySlot {
+  start: string;
+  end: string;
+  available: boolean;
+}
+
+interface Conflict {
+  type: string;
+  appointment: Appointment;
+  message: string;
+}
+
 export default function AppointmentDashboard() {
   const { addToast } = useToast();
+  const router = useRouter();
   const [tokens, setTokens] = useState<TokenData | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSearchDialog, setShowSearchDialog] = useState(false);
+  const [showBookDialog, setShowBookDialog] = useState(false);
+  const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [availabilityData, setAvailabilityData] = useState<AvailabilitySlot[]>([]);
+  const [conflicts, setConflicts] = useState<Conflict[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   // Search parameters state
   const [searchParams, setSearchParams] = useState({
@@ -60,6 +85,17 @@ export default function AppointmentDashboard() {
     _sort: ''
   });
 
+  // Booking form state
+  const [bookingForm, setBookingForm] = useState({
+    patientId: '',
+    practitionerId: '',
+    date: '',
+    startTime: '',
+    endTime: '',
+    description: '',
+    type: 'Routine'
+  });
+
   const loadAppointments = async (tokenData: TokenData) => {
     setLoading(true);
     setError(null);
@@ -67,7 +103,10 @@ export default function AppointmentDashboard() {
       const result = await fetchAppointments(tokenData.access_token);
       if (result.success && result.data) {
         const bundle = result.data as Bundle;
-        setAppointments(bundle.entry?.map((e) => e.resource) || []);
+        const allAppointmentData = bundle.entry?.map((e) => e.resource) || [];
+        setAllAppointments(allAppointmentData);
+        setCurrentPage(1); // Reset to first page when loading new data
+        updatePaginatedAppointments(allAppointmentData, 1);
       } else if (!result.success && result.error) {
         setError(result.error);
       }
@@ -77,6 +116,19 @@ export default function AppointmentDashboard() {
       setLoading(false);
     }
   };
+
+  const updatePaginatedAppointments = (appointmentList: Appointment[], page: number) => {
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setAppointments(appointmentList.slice(startIndex, endIndex));
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    updatePaginatedAppointments(allAppointments, page);
+  };
+
+  const totalPages = Math.ceil(allAppointments.length / itemsPerPage);
 
   const handleSearch = async () => {
     setLoading(true);
@@ -98,7 +150,10 @@ export default function AppointmentDashboard() {
       const result = await searchAppointments(filteredParams, tokens.access_token);
       if (result.success && result.data) {
         const bundle = result.data as Bundle;
-        setAppointments(bundle.entry?.map((e) => e.resource) || []);
+        const searchResults = bundle.entry?.map((e) => e.resource) || [];
+        setAllAppointments(searchResults);
+        setCurrentPage(1); // Reset to first page when searching
+        updatePaginatedAppointments(searchResults, 1);
       } else if (!result.success && result.error) {
         setError(result.error);
       }
@@ -170,12 +225,238 @@ export default function AppointmentDashboard() {
     return participant?.actor.display || participant?.actor.reference || 'N/A';
   };
 
+  const handleBookAppointment = async () => {
+    if (!tokens) {
+      addToast(errorToast('Error', 'No tokens available'));
+      return;
+    }
+
+    setBookingLoading(true);
+    setConflicts([]);
+
+    try {
+      // Check for conflicts first
+      const startDateTime = `${bookingForm.date}T${bookingForm.startTime}:00`;
+      const endDateTime = `${bookingForm.date}T${bookingForm.endTime}:00`;
+
+      const conflictResult = await checkAppointmentConflicts(
+        bookingForm.practitionerId,
+        bookingForm.patientId,
+        startDateTime,
+        endDateTime,
+        undefined,
+        tokens.access_token
+      );
+
+      if (!conflictResult.success) {
+        addToast(errorToast('Error', conflictResult.error || 'Failed to check conflicts'));
+        return;
+      }
+
+      if (conflictResult.hasConflicts) {
+        setConflicts(conflictResult.conflicts);
+        addToast(errorToast('Conflicts Detected', 'Please resolve conflicts before booking'));
+        return;
+      }
+
+      // Create appointment data
+      const appointmentData = {
+        resourceType: 'Appointment',
+        status: 'booked',
+        description: bookingForm.description,
+        start: startDateTime,
+        end: endDateTime,
+        participant: [
+          {
+            actor: { reference: `Patient/${bookingForm.patientId}` },
+            status: 'accepted'
+          },
+          {
+            actor: { reference: `Practitioner/${bookingForm.practitionerId}` },
+            status: 'accepted'
+          }
+        ],
+        appointmentType: {
+          coding: [{
+            system: 'http://terminology.hl7.org/CodeSystem/v2-0276',
+            code: bookingForm.type,
+            display: bookingForm.type
+          }]
+        }
+      };
+
+      const result = await createAppointment(appointmentData, tokens.access_token);
+
+      if (result.success) {
+        addToast(successToast('Success', 'Appointment booked successfully!'));
+        setShowBookDialog(false);
+        // Reset form
+        setBookingForm({
+          patientId: '',
+          practitionerId: '',
+          date: '',
+          startTime: '',
+          endTime: '',
+          description: '',
+          type: 'Routine'
+        });
+        // Refresh appointments list
+        await loadAppointments(tokens);
+      } else {
+        addToast(errorToast('Error', result.error || 'Failed to book appointment'));
+      }
+    } catch (err) {
+      addToast(errorToast('Error', 'Failed to book appointment'));
+    } finally {
+      setBookingLoading(false);
+    }
+  };
+
+  const handleRescheduleAppointment = async () => {
+    if (!selectedAppointment || !tokens) return;
+
+    setBookingLoading(true);
+    setConflicts([]);
+
+    try {
+      const startDateTime = `${bookingForm.date}T${bookingForm.startTime}:00`;
+      const endDateTime = `${bookingForm.date}T${bookingForm.endTime}:00`;
+
+      // Check for conflicts (excluding current appointment)
+      const conflictResult = await checkAppointmentConflicts(
+        bookingForm.practitionerId,
+        bookingForm.patientId,
+        startDateTime,
+        endDateTime,
+        selectedAppointment.id,
+        tokens.access_token
+      );
+
+      if (!conflictResult.success) {
+        addToast(errorToast('Error', conflictResult.error || 'Failed to check conflicts'));
+        return;
+      }
+
+      if (conflictResult.hasConflicts) {
+        setConflicts(conflictResult.conflicts);
+        addToast(errorToast('Conflicts Detected', 'Please resolve conflicts before rescheduling'));
+        return;
+      }
+
+      // Update appointment data
+      const appointmentData = {
+        ...selectedAppointment,
+        start: startDateTime,
+        end: endDateTime,
+        description: bookingForm.description
+      };
+
+      const result = await updateAppointment(selectedAppointment.id, appointmentData, tokens.access_token);
+
+      if (result.success) {
+        addToast(successToast('Success', 'Appointment rescheduled successfully!'));
+        setShowRescheduleDialog(false);
+        setSelectedAppointment(null);
+        // Refresh appointments list
+        await loadAppointments(tokens);
+      } else {
+        addToast(errorToast('Error', result.error || 'Failed to reschedule appointment'));
+      }
+    } catch (err) {
+      addToast(errorToast('Error', 'Failed to reschedule appointment'));
+    } finally {
+      setBookingLoading(false);
+    }
+  };
+
+  const handleCancelAppointment = async (appointmentId: string) => {
+    if (!tokens) {
+      addToast(errorToast('Error', 'No tokens available'));
+      return;
+    }
+
+    if (!confirm('Are you sure you want to cancel this appointment?')) {
+      return;
+    }
+
+    try {
+      const result = await cancelAppointment(appointmentId, tokens.access_token);
+
+      if (result.success) {
+        addToast(successToast('Success', 'Appointment cancelled successfully!'));
+        // Refresh appointments list
+        await loadAppointments(tokens);
+      } else {
+        addToast(errorToast('Error', result.error || 'Failed to cancel appointment'));
+      }
+    } catch (err) {
+      addToast(errorToast('Error', 'Failed to cancel appointment'));
+    }
+  };
+
+  const handleRescheduleClick = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    // Extract patient and practitioner IDs from participants
+    const patientParticipant = appointment.participant?.find(p =>
+      p.actor.reference?.startsWith('Patient/')
+    );
+    const practitionerParticipant = appointment.participant?.find(p =>
+      p.actor.reference?.startsWith('Practitioner/')
+    );
+
+    const patientId = patientParticipant?.actor.reference?.split('/')[1] || '';
+    const practitionerId = practitionerParticipant?.actor.reference?.split('/')[1] || '';
+
+    setBookingForm({
+      patientId,
+      practitionerId,
+      date: appointment.start?.split('T')[0] || '',
+      startTime: appointment.start?.split('T')[1]?.substring(0, 5) || '',
+      endTime: appointment.end?.split('T')[1]?.substring(0, 5) || '',
+      description: appointment.description || '',
+      type: 'Routine'
+    });
+    setShowRescheduleDialog(true);
+  };
+
+  const handleBookingFormChange = (field: string, value: string) => {
+    setBookingForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   return (
     <div className="font-sans min-h-screen p-4 pb-20 gap-16 sm:p-6 lg:p-8 bg-background text-foreground">
       <main className="max-w-7xl mx-auto">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
           <h1 className="text-2xl lg:text-3xl font-bold">Appointment Dashboard</h1>
           <div className="flex items-center gap-2 lg:gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => router.push('/dashboard/patient')}
+                variant="outline"
+                size="sm"
+                className="whitespace-nowrap"
+              >
+                Patients
+              </Button>
+              <Button
+                onClick={() => router.push('/')}
+                variant="outline"
+                size="sm"
+                className="whitespace-nowrap"
+              >
+                Home
+              </Button>
+            </div>
+            <Button
+              onClick={() => setShowBookDialog(true)}
+              size="sm"
+              className="whitespace-nowrap"
+            >
+              Book Appointment
+            </Button>
             <Button
               onClick={() => setShowSearchDialog(true)}
               variant="outline"
@@ -320,10 +601,237 @@ export default function AppointmentDashboard() {
           </DialogContent>
         </Dialog>
 
+        {/* Book New Appointment Dialog */}
+        <Dialog open={showBookDialog} onOpenChange={setShowBookDialog}>
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Book New Appointment</DialogTitle>
+              <DialogDescription>
+                Schedule a new appointment with availability checking and conflict detection.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="space-y-2">
+                <Label htmlFor="patientId">Patient ID</Label>
+                <Input
+                  id="patientId"
+                  type="text"
+                  value={bookingForm.patientId}
+                  onChange={(e) => handleBookingFormChange('patientId', e.target.value)}
+                  placeholder="Patient/123"
+                  className="bg-background border-border"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="practitionerId">Practitioner ID</Label>
+                <Input
+                  id="practitionerId"
+                  type="text"
+                  value={bookingForm.practitionerId}
+                  onChange={(e) => handleBookingFormChange('practitionerId', e.target.value)}
+                  placeholder="Practitioner/456"
+                  className="bg-background border-border"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="date">Date</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={bookingForm.date}
+                  onChange={(e) => handleBookingFormChange('date', e.target.value)}
+                  className="bg-background border-border"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="type">Appointment Type</Label>
+                <Select value={bookingForm.type} onValueChange={(value) => handleBookingFormChange('type', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Routine">Routine</SelectItem>
+                    <SelectItem value="Emergency">Emergency</SelectItem>
+                    <SelectItem value="Follow-up">Follow-up</SelectItem>
+                    <SelectItem value="Consultation">Consultation</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="startTime">Start Time</Label>
+                <Input
+                  id="startTime"
+                  type="time"
+                  value={bookingForm.startTime}
+                  onChange={(e) => handleBookingFormChange('startTime', e.target.value)}
+                  className="bg-background border-border"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="endTime">End Time</Label>
+                <Input
+                  id="endTime"
+                  type="time"
+                  value={bookingForm.endTime}
+                  onChange={(e) => handleBookingFormChange('endTime', e.target.value)}
+                  className="bg-background border-border"
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={bookingForm.description}
+                  onChange={(e) => handleBookingFormChange('description', e.target.value)}
+                  placeholder="Appointment description"
+                  className="bg-background border-border"
+                />
+              </div>
+            </div>
+
+            {conflicts.length > 0 && (
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                <h4 className="text-red-800 font-medium mb-2">Conflicts Detected:</h4>
+                <ul className="text-red-700 text-sm">
+                  {conflicts.map((conflict, index) => (
+                    <li key={index}>• {conflict.message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <DialogFooter className="gap-2">
+              <Button
+                onClick={() => {
+                  setShowBookDialog(false);
+                  setConflicts([]);
+                  setBookingForm({
+                    patientId: '',
+                    practitionerId: '',
+                    date: '',
+                    startTime: '',
+                    endTime: '',
+                    description: '',
+                    type: 'Routine'
+                  });
+                }}
+                variant="outline"
+                disabled={bookingLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleBookAppointment}
+                disabled={bookingLoading || !bookingForm.patientId || !bookingForm.practitionerId || !bookingForm.date || !bookingForm.startTime || !bookingForm.endTime}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {bookingLoading ? 'Booking...' : 'Book Appointment'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Reschedule Appointment Dialog */}
+        <Dialog open={showRescheduleDialog} onOpenChange={setShowRescheduleDialog}>
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Reschedule Appointment</DialogTitle>
+              <DialogDescription>
+                Update the date, time, or details of this appointment.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="space-y-2">
+                <Label htmlFor="reschedule-date">Date</Label>
+                <Input
+                  id="reschedule-date"
+                  type="date"
+                  value={bookingForm.date}
+                  onChange={(e) => handleBookingFormChange('date', e.target.value)}
+                  className="bg-background border-border"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="reschedule-startTime">Start Time</Label>
+                <Input
+                  id="reschedule-startTime"
+                  type="time"
+                  value={bookingForm.startTime}
+                  onChange={(e) => handleBookingFormChange('startTime', e.target.value)}
+                  className="bg-background border-border"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="reschedule-endTime">End Time</Label>
+                <Input
+                  id="reschedule-endTime"
+                  type="time"
+                  value={bookingForm.endTime}
+                  onChange={(e) => handleBookingFormChange('endTime', e.target.value)}
+                  className="bg-background border-border"
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="reschedule-description">Description</Label>
+                <Textarea
+                  id="reschedule-description"
+                  value={bookingForm.description}
+                  onChange={(e) => handleBookingFormChange('description', e.target.value)}
+                  placeholder="Appointment description"
+                  className="bg-background border-border"
+                />
+              </div>
+            </div>
+
+            {conflicts.length > 0 && (
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                <h4 className="text-red-800 font-medium mb-2">Conflicts Detected:</h4>
+                <ul className="text-red-700 text-sm">
+                  {conflicts.map((conflict, index) => (
+                    <li key={index}>• {conflict.message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <DialogFooter className="gap-2">
+              <Button
+                onClick={() => {
+                  setShowRescheduleDialog(false);
+                  setSelectedAppointment(null);
+                  setConflicts([]);
+                }}
+                variant="outline"
+                disabled={bookingLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleRescheduleAppointment}
+                disabled={bookingLoading || !bookingForm.date || !bookingForm.startTime || !bookingForm.endTime}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {bookingLoading ? 'Rescheduling...' : 'Reschedule Appointment'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {appointments.length > 0 && (
           <div className="mt-4">
-            <h2 className="text-2xl font-bold mb-6">Appointments ({appointments.length})</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <h2 className="text-2xl font-bold mb-6">Appointments ({allAppointments.length})</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {appointments.map((appointment) => (
                 <Card key={appointment.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
@@ -357,10 +865,33 @@ export default function AppointmentDashboard() {
                         </div>
                       )}
                     </div>
+                    <div className="mt-4 pt-4 border-t border-border flex gap-2">
+                      <Button
+                        onClick={() => handleRescheduleClick(appointment)}
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        Reschedule
+                      </Button>
+                      <Button
+                        onClick={() => handleCancelAppointment(appointment.id)}
+                        size="sm"
+                        variant="destructive"
+                        className="flex-1"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+            />
           </div>
         )}
 

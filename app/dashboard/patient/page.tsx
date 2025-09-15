@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { generateTokens } from '../../actions/tokenActions';
 import { fetchPatients, fetchPatientById, searchPatients, updatePatient } from '../../actions/patientActions';
 import Link from 'next/link';
@@ -13,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '@/components/ui/textarea';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useToast, successToast, errorToast } from '@/components/toast';
+import { Pagination } from '@/components/ui/pagination';
 
 interface TokenData {
   access_token: string;
@@ -38,13 +40,17 @@ interface Bundle {
 
 export default function PatientDashboard() {
   const { addToast } = useToast();
+  const router = useRouter();
   const [tokens, setTokens] = useState<TokenData | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [allPatients, setAllPatients] = useState<Patient[]>([]);
   const [patientId, setPatientId] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [showSearchDialog, setShowSearchDialog] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   // Edit functionality state
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
@@ -86,7 +92,10 @@ export default function PatientDashboard() {
       const result = await fetchPatients(tokenData.access_token);
       if (result.success && result.data) {
         const bundle = result.data as Bundle;
-        setPatients(bundle.entry?.map((e) => e.resource) || []);
+        const allPatientData = bundle.entry?.map((e) => e.resource) || [];
+        setAllPatients(allPatientData);
+        setCurrentPage(1); // Reset to first page when loading new data
+        updatePaginatedPatients(allPatientData, 1);
       } else if (!result.success && result.error) {
         setError(result.error);
       }
@@ -96,6 +105,19 @@ export default function PatientDashboard() {
       setLoading(false);
     }
   };
+
+  const updatePaginatedPatients = (patientList: Patient[], page: number) => {
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setPatients(patientList.slice(startIndex, endIndex));
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    updatePaginatedPatients(allPatients, page);
+  };
+
+  const totalPages = Math.ceil(allPatients.length / itemsPerPage);
 
   const loadPatientById = async (id: string) => {
     if (!id.trim()) {
@@ -143,7 +165,10 @@ export default function PatientDashboard() {
       const result = await searchPatients(filteredParams, tokens.access_token);
       if (result.success && result.data) {
         const bundle = result.data as Bundle;
-        setPatients(bundle.entry?.map((e) => e.resource) || []);
+        const searchResults = bundle.entry?.map((e) => e.resource) || [];
+        setAllPatients(searchResults);
+        setCurrentPage(1); // Reset to first page when searching
+        updatePaginatedPatients(searchResults, 1);
       } else if (!result.success && result.error) {
         setError(result.error);
       }
@@ -271,6 +296,24 @@ export default function PatientDashboard() {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
           <h1 className="text-2xl lg:text-3xl font-bold">Patient Dashboard</h1>
           <div className="flex items-center gap-2 lg:gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => router.push('/dashboard/appointments')}
+                variant="outline"
+                size="sm"
+                className="whitespace-nowrap"
+              >
+                Appointments
+              </Button>
+              <Button
+                onClick={() => router.push('/')}
+                variant="outline"
+                size="sm"
+                className="whitespace-nowrap"
+              >
+                Home
+              </Button>
+            </div>
             {tokens && (
               <div className="flex items-center gap-2">
                 <Input
@@ -509,7 +552,7 @@ export default function PatientDashboard() {
 
         {patients.length > 0 && (
           <div className="mt-4">
-            <h2 className="text-2xl font-bold mb-6">Patients ({patients.length})</h2>
+            <h2 className="text-2xl font-bold mb-6">Patients ({allPatients.length})</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {patients.map((patient) => (
                 <div key={patient.id} className="bg-card p-4 rounded-lg border border-border hover:bg-accent transition-colors">
@@ -554,6 +597,11 @@ export default function PatientDashboard() {
                 </div>
               ))}
             </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+            />
           </div>
         )}
 
