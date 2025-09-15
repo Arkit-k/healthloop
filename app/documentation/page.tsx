@@ -976,7 +976,7 @@ Accept: application/fhir+json`}
                         <h4 className="font-semibold mb-2">Import Instructions</h4>
                         <ol className="text-sm space-y-1 text-muted-foreground ml-4">
                           <li>1. Download the collection files above</li>
-                          <li>2. Open Postman and click "Import"</li>
+                          <li>2. Open Postman and click &quot;Import&quot;</li>
                           <li>3. Select the downloaded JSON files</li>
                           <li>4. Set up environment variables</li>
                           <li>5. Configure authentication headers</li>
