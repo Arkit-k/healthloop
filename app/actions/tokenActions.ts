@@ -19,7 +19,7 @@ export async function generateTokens() {
         'x-api-key': apiKey
       },
       body: new URLSearchParams({
-        grant_type: 'password',
+        grant_type: 'client_credentials',
         username: username,
         password: password
       })

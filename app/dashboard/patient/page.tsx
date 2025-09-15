@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useToast, successToast, errorToast } from '@/components/toast';
 import { Pagination } from '@/components/ui/pagination';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 interface TokenData {
   access_token: string;
@@ -63,6 +64,7 @@ export default function PatientDashboard() {
     email: ''
   });
   const [updateLoading, setUpdateLoading] = useState(false);
+
 
   // Search parameters state
   const [searchParams, setSearchParams] = useState({
@@ -281,6 +283,8 @@ export default function PatientDashboard() {
         console.error('Failed to parse saved tokens');
       }
     }
+    // Clear any old dashboard credentials from localStorage
+    localStorage.removeItem('dashboard_credentials');
   }, []);
 
   useEffect(() => {
@@ -289,6 +293,7 @@ export default function PatientDashboard() {
       localStorage.setItem('oauth_tokens', JSON.stringify(tokens));
     }
   }, [tokens]);
+
 
   return (
     <div className="font-sans min-h-screen p-4 pb-20 gap-16 sm:p-6 lg:p-8 bg-background text-foreground">
@@ -337,6 +342,7 @@ export default function PatientDashboard() {
             <ThemeToggle />
           </div>
         </div>
+
 
         <div className="mb-4 space-y-4">
           {!tokens && (

@@ -9,6 +9,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 const PatientDashboard = lazy(() => import('./dashboard/patient/page'));
 const AppointmentsDashboard = lazy(() => import('./dashboard/appointments/page'));
 const BillingDashboard = lazy(() => import('./dashboard/billing/page'));
+const DocumentationPage = lazy(() => import('./documentation/page'));
 
 // Loading component for Suspense fallback
 const LoadingSpinner = () => (
@@ -18,7 +19,7 @@ const LoadingSpinner = () => (
 );
 
 export default function Home() {
-  const [currentView, setCurrentView] = useState<'home' | 'patients' | 'appointments' | 'billing'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'patients' | 'appointments' | 'billing' | 'documentation'>('home');
 
   // Render different views based on currentView state
   if (currentView === 'patients') {
@@ -44,6 +45,15 @@ export default function Home() {
       </Suspense>
     );
   }
+
+  if (currentView === 'documentation') {
+    return (
+      <Suspense fallback={<LoadingSpinner />}>
+        <DocumentationPage />
+      </Suspense>
+    );
+  }
+
 
 
   return (
@@ -103,19 +113,20 @@ export default function Home() {
               </CardContent>
             </Card>
 
-            <Card className="flex-1 max-w-sm hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setCurrentView('allergies')}>
+            <Card className="flex-1 max-w-sm hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setCurrentView('documentation')}>
               <CardHeader>
-                <CardTitle className="text-xl">Allergies & Intolerances</CardTitle>
+                <CardTitle className="text-xl">API Documentation</CardTitle>
                 <CardDescription>
-                  Manage patient allergies, intolerances, and adverse reactions.
+                  Complete integration guide, API discovery, and Postman collections.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Button variant="outline" className="w-full" size="lg">
-                  Manage Allergies
+                  View Documentation
                 </Button>
               </CardContent>
             </Card>
+
           </div>
         </div>
       </main>

@@ -52,11 +52,11 @@ export async function fetchPatientById(patientId: string, accessToken: string) {
   }
 }
 
-export async function fetchPatients(accessToken: string) {
+export async function fetchPatients(accessToken: string, customCredentials?: { baseUrl?: string; apiKey?: string }) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
+    const baseUrl = customCredentials?.baseUrl || process.env.NEXT_PUBLIC_FHIR_BASE_URL;
     const patientEndpoint = process.env.FHIR_PATIENT_ENDPOINT;
-    const apiKey = process.env.API_KEY;
+    const apiKey = customCredentials?.apiKey || process.env.API_KEY;
 
     if (!baseUrl || !patientEndpoint || !apiKey) {
       throw new Error('Missing required environment variables');

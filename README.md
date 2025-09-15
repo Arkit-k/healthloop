@@ -19,12 +19,6 @@ A comprehensive healthcare management platform built with Next.js, providing pat
 - **Insurance Eligibility Checking**: Verify patient insurance coverage and eligibility status
 - **Reports & Analytics**: Generate comprehensive billing reports
 
-### 🩺 Allergies & Intolerances
-- **Allergy Management**: Create, update, and track patient allergies and intolerances
-- **Patient-Specific Views**: View all allergies for individual patients
-- **Advanced Search**: Search allergies by status, category, and verification status
-- **Clinical Documentation**: Record reactions, severity, and clinical notes
-
 ## Getting Started
 
 First, install dependencies and run the development server:
@@ -45,11 +39,12 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 ## Dashboard Access
 
 ### Main Navigation
-The application provides three main dashboards accessible from the home page:
+The application provides four main dashboards accessible from the home page:
 
 1. **Patient Dashboard** - `/dashboard/patient`
 2. **Appointments Dashboard** - `/dashboard/appointments`
 3. **Billing & Administrative Dashboard** - `/dashboard/billing`
+4. **Medication Statements Dashboard** - `/dashboard/medications`
 
 ### Billing Features Documentation
 
@@ -81,6 +76,7 @@ The application provides three main dashboards accessible from the home page:
 - **Patient Actions**: `app/actions/patientActions.ts`
 - **Appointment Actions**: `app/actions/appointmentActions.ts`
 - **Billing Actions**: `app/actions/billingActions.ts`
+- **Medication Actions**: `app/actions/medicationActions.ts`
 - **Token Management**: `app/actions/tokenActions.ts`
 
 ### FHIR Integration
