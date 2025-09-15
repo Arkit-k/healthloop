@@ -45,6 +45,7 @@ export default function Home() {
     );
   }
 
+
   return (
     <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
       <header className="row-start-1 flex justify-end w-full max-w-4xl">
@@ -59,7 +60,7 @@ export default function Home() {
             Your comprehensive healthcare management platform for patients and appointments.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
             <Card className="flex-1 max-w-sm hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setCurrentView('patients')}>
               <CardHeader>
                 <CardTitle className="text-xl">Patient Dashboard</CardTitle>
@@ -92,12 +93,26 @@ export default function Home() {
               <CardHeader>
                 <CardTitle className="text-xl">Billing & Administrative</CardTitle>
                 <CardDescription>
-                  Check insurance eligibility, view balances, access billing codes, and generate reports.
+                  Check insurance eligibility and generate reports.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Button variant="outline" className="w-full" size="lg">
                   Access Billing
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="flex-1 max-w-sm hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setCurrentView('allergies')}>
+              <CardHeader>
+                <CardTitle className="text-xl">Allergies & Intolerances</CardTitle>
+                <CardDescription>
+                  Manage patient allergies, intolerances, and adverse reactions.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" className="w-full" size="lg">
+                  Manage Allergies
                 </Button>
               </CardContent>
             </Card>

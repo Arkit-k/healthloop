@@ -322,7 +322,7 @@ export default function BillingDashboard() {
                   value={eligibilityPatientId}
                   onChange={(e) => setEligibilityPatientId(e.target.value)}
                   placeholder="Patient/123"
-                  className="bg-background border-border"
+                  className="bg-background border-border w-full"
                 />
               </div>
             </div>
@@ -418,21 +418,21 @@ export default function BillingDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="font-medium text-muted-foreground">Beneficiary:</span>
-                        <span className="text-muted-foreground">
+                      <div className="flex justify-between items-start">
+                        <span className="font-medium text-muted-foreground flex-shrink-0 mr-2">Beneficiary:</span>
+                        <span className="text-muted-foreground truncate text-right flex-1 min-w-0">
                           {coverage.beneficiary?.reference || 'N/A'}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium text-muted-foreground">Payor:</span>
-                        <span className="text-muted-foreground">
+                      <div className="flex justify-between items-start">
+                        <span className="font-medium text-muted-foreground flex-shrink-0 mr-2">Payor:</span>
+                        <span className="text-muted-foreground truncate text-right flex-1 min-w-0">
                           {coverage.payor?.[0]?.display || coverage.payor?.[0]?.reference || 'N/A'}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium text-muted-foreground">Plan:</span>
-                        <span className="text-muted-foreground">
+                      <div className="flex justify-between items-start">
+                        <span className="font-medium text-muted-foreground flex-shrink-0 mr-2">Plan:</span>
+                        <span className="text-muted-foreground truncate text-right flex-1 min-w-0">
                           {coverage.class?.[0]?.value || 'N/A'}
                         </span>
                       </div>

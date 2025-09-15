@@ -19,6 +19,12 @@ A comprehensive healthcare management platform built with Next.js, providing pat
 - **Insurance Eligibility Checking**: Verify patient insurance coverage and eligibility status
 - **Reports & Analytics**: Generate comprehensive billing reports
 
+### 🩺 Allergies & Intolerances
+- **Allergy Management**: Create, update, and track patient allergies and intolerances
+- **Patient-Specific Views**: View all allergies for individual patients
+- **Advanced Search**: Search allergies by status, category, and verification status
+- **Clinical Documentation**: Record reactions, severity, and clinical notes
+
 ## Getting Started
 
 First, install dependencies and run the development server:
