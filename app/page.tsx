@@ -1,12 +1,40 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useState, Suspense, lazy } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/theme-toggle';
 
+// Lazy load dashboard components for code splitting
+const PatientDashboard = lazy(() => import('./dashboard/patient/page'));
+const AppointmentsDashboard = lazy(() => import('./dashboard/appointments/page'));
+
+// Loading component for Suspense fallback
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center min-h-[200px]">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+  </div>
+);
+
 export default function Home() {
-  const router = useRouter();
+  const [currentView, setCurrentView] = useState<'home' | 'patients' | 'appointments'>('home');
+
+  // Render different views based on currentView state
+  if (currentView === 'patients') {
+    return (
+      <Suspense fallback={<LoadingSpinner />}>
+        <PatientDashboard />
+      </Suspense>
+    );
+  }
+
+  if (currentView === 'appointments') {
+    return (
+      <Suspense fallback={<LoadingSpinner />}>
+        <AppointmentsDashboard />
+      </Suspense>
+    );
+  }
 
   return (
     <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
@@ -23,7 +51,7 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 mt-8">
-            <Card className="flex-1 max-w-sm hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/patient')}>
+            <Card className="flex-1 max-w-sm hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setCurrentView('patients')}>
               <CardHeader>
                 <CardTitle className="text-xl">Patient Dashboard</CardTitle>
                 <CardDescription>
@@ -37,7 +65,7 @@ export default function Home() {
               </CardContent>
             </Card>
 
-            <Card className="flex-1 max-w-sm hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/appointments')}>
+            <Card className="flex-1 max-w-sm hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setCurrentView('appointments')}>
               <CardHeader>
                 <CardTitle className="text-xl">Appointments Dashboard</CardTitle>
                 <CardDescription>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { generateTokens } from '../../actions/tokenActions';
 import { fetchPatients, fetchPatientById, searchPatients, updatePatient } from '../../actions/patientActions';
@@ -179,12 +179,12 @@ export default function PatientDashboard() {
     }
   };
 
-  const handleSearchParamChange = (key: string, value: string) => {
+  const handleSearchParamChange = useCallback((key: string, value: string) => {
     setSearchParams(prev => ({
       ...prev,
       [key]: value
     }));
-  };
+  }, []);
 
   // Edit functionality functions
   const handleEditPatient = (patient: Patient) => {
@@ -199,12 +199,12 @@ export default function PatientDashboard() {
     });
   };
 
-  const handleEditFormChange = (field: string, value: string) => {
+  const handleEditFormChange = useCallback((field: string, value: string) => {
     setEditFormData(prev => ({
       ...prev,
       [field]: value
     }));
-  };
+  }, []);
 
   const handleUpdatePatient = async () => {
     if (!editingPatient || !tokens) return;
@@ -298,20 +298,12 @@ export default function PatientDashboard() {
           <div className="flex items-center gap-2 lg:gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <Button
-                onClick={() => router.push('/dashboard/appointments')}
+                onClick={() => window.location.href = '/'}
                 variant="outline"
                 size="sm"
                 className="whitespace-nowrap"
               >
-                Appointments
-              </Button>
-              <Button
-                onClick={() => router.push('/')}
-                variant="outline"
-                size="sm"
-                className="whitespace-nowrap"
-              >
-                Home
+                ← Back to Home
               </Button>
             </div>
             {tokens && (

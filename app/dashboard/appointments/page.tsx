@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { generateTokens } from '../../actions/tokenActions';
 import { fetchAppointments, searchAppointments, createAppointment, updateAppointment, cancelAppointment, checkAppointmentConflicts } from '../../actions/appointmentActions';
@@ -45,11 +45,6 @@ interface Bundle {
   entry?: BundleEntry[];
 }
 
-interface AvailabilitySlot {
-  start: string;
-  end: string;
-  available: boolean;
-}
 
 interface Conflict {
   type: string;
@@ -70,7 +65,6 @@ export default function AppointmentDashboard() {
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [bookingLoading, setBookingLoading] = useState(false);
-  const [availabilityData, setAvailabilityData] = useState<AvailabilitySlot[]>([]);
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
@@ -82,7 +76,7 @@ export default function AppointmentDashboard() {
     practitioner: '',
     status: 'any',
     _count: '',
-    _sort: ''
+    _sort: 'default'
   });
 
   // Booking form state
@@ -123,12 +117,11 @@ export default function AppointmentDashboard() {
     setAppointments(appointmentList.slice(startIndex, endIndex));
   };
 
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
     updatePaginatedAppointments(allAppointments, page);
-  };
+  }, [allAppointments]);
 
-  const totalPages = Math.ceil(allAppointments.length / itemsPerPage);
 
   const handleSearch = async () => {
     setLoading(true);
@@ -139,10 +132,10 @@ export default function AppointmentDashboard() {
         return;
       }
 
-      // Filter out empty search parameters and "any" values
+      // Filter out empty search parameters and "any"/"default" values
       const filteredParams: Record<string, string> = {};
       Object.entries(searchParams).forEach(([key, value]) => {
-        if (value.trim() !== '' && value !== 'any') {
+        if (value.trim() !== '' && value !== 'any' && value !== 'default') {
           filteredParams[key] = value.trim();
         }
       });
@@ -164,12 +157,12 @@ export default function AppointmentDashboard() {
     }
   };
 
-  const handleSearchParamChange = (key: string, value: string) => {
+  const handleSearchParamChange = useCallback((key: string, value: string) => {
     setSearchParams(prev => ({
       ...prev,
       [key]: value
     }));
-  };
+  }, []);
 
   const handleGenerateAndFetch = async () => {
     setLoading(true);
@@ -213,17 +206,19 @@ export default function AppointmentDashboard() {
     }
   }, [tokens]);
 
-  const formatDateTime = (dateString?: string) => {
+  const formatDateTime = useCallback((dateString?: string) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleString();
-  };
+  }, []);
 
-  const getParticipantDisplay = (appointment: Appointment, type: 'Patient' | 'Practitioner') => {
+  const getParticipantDisplay = useCallback((appointment: Appointment, type: 'Patient' | 'Practitioner') => {
     const participant = appointment.participant?.find(p =>
       p.actor.reference?.startsWith(type + '/')
     );
     return participant?.actor.display || participant?.actor.reference || 'N/A';
-  };
+  }, []);
+
+  const totalPages = useMemo(() => Math.ceil(allAppointments.length / itemsPerPage), [allAppointments.length, itemsPerPage]);
 
   const handleBookAppointment = async () => {
     if (!tokens) {
@@ -419,12 +414,12 @@ export default function AppointmentDashboard() {
     setShowRescheduleDialog(true);
   };
 
-  const handleBookingFormChange = (field: string, value: string) => {
+  const handleBookingFormChange = useCallback((field: string, value: string) => {
     setBookingForm(prev => ({
       ...prev,
       [field]: value
     }));
-  };
+  }, []);
 
   return (
     <div className="font-sans min-h-screen p-4 pb-20 gap-16 sm:p-6 lg:p-8 bg-background text-foreground">
@@ -434,20 +429,12 @@ export default function AppointmentDashboard() {
           <div className="flex items-center gap-2 lg:gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <Button
-                onClick={() => router.push('/dashboard/patient')}
+                onClick={() => window.location.href = '/'}
                 variant="outline"
                 size="sm"
                 className="whitespace-nowrap"
               >
-                Patients
-              </Button>
-              <Button
-                onClick={() => router.push('/')}
-                variant="outline"
-                size="sm"
-                className="whitespace-nowrap"
-              >
-                Home
+                ← Back to Home
               </Button>
             </div>
             <Button
@@ -563,7 +550,7 @@ export default function AppointmentDashboard() {
                     <SelectValue placeholder="Default" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Default</SelectItem>
+                    <SelectItem value="default">Default</SelectItem>
                     <SelectItem value="date">By Date</SelectItem>
                     <SelectItem value="-date">By Date (Desc)</SelectItem>
                     <SelectItem value="status">By Status</SelectItem>
@@ -580,7 +567,7 @@ export default function AppointmentDashboard() {
                   practitioner: '',
                   status: 'any',
                   _count: '',
-                  _sort: ''
+                  _sort: 'default'
                 })}
                 variant="outline"
                 className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
