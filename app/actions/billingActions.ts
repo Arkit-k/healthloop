@@ -11,13 +11,14 @@ interface BillingSearchParams {
 export async function fetchInsuranceCoverage(accessToken: string) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
+    const firmPrefix = process.env.FIRM_URL_PREFIX;
     const apiKey = process.env.API_KEY;
 
-    if (!baseUrl || !apiKey) {
+    if (!baseUrl || !firmPrefix || !apiKey) {
       throw new Error('Missing required environment variables');
     }
 
-    const response = await fetch(`${baseUrl}/ema/fhir/v2/Coverage`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Coverage`, {
       method: 'GET',
       headers: {
         'accept': 'application/fhir+json',
@@ -30,8 +31,17 @@ export async function fetchInsuranceCoverage(accessToken: string) {
       throw new Error(`Coverage fetch failed: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return { success: true, data };
+    const text = await response.text();
+    if (!text.trim()) {
+      throw new Error('Empty response from coverage endpoint');
+    }
+
+    try {
+      const data = JSON.parse(text);
+      return { success: true, data };
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Failed to fetch insurance coverage' };
   }
@@ -40,13 +50,14 @@ export async function fetchInsuranceCoverage(accessToken: string) {
 export async function checkInsuranceEligibility(patientId: string, accessToken: string) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
+    const firmPrefix = process.env.FIRM_URL_PREFIX;
     const apiKey = process.env.API_KEY;
 
-    if (!baseUrl || !apiKey) {
+    if (!baseUrl || !firmPrefix || !apiKey) {
       throw new Error('Missing required environment variables');
     }
 
-    const response = await fetch(`${baseUrl}/ema/fhir/v2/Coverage?beneficiary=${patientId}`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Coverage?beneficiary=${patientId}`, {
       method: 'GET',
       headers: {
         'accept': 'application/fhir+json',
@@ -59,8 +70,17 @@ export async function checkInsuranceEligibility(patientId: string, accessToken: 
       throw new Error(`Eligibility check failed: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return { success: true, data };
+    const text = await response.text();
+    if (!text.trim()) {
+      throw new Error('Empty response from eligibility endpoint');
+    }
+
+    try {
+      const data = JSON.parse(text);
+      return { success: true, data };
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Failed to check insurance eligibility' };
   }
@@ -69,15 +89,16 @@ export async function checkInsuranceEligibility(patientId: string, accessToken: 
 export async function fetchPatientBalances(accessToken: string) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
+    const firmPrefix = process.env.FIRM_URL_PREFIX;
     const apiKey = process.env.API_KEY;
 
-    if (!baseUrl || !apiKey) {
+    if (!baseUrl || !firmPrefix || !apiKey) {
       throw new Error('Missing required environment variables');
     }
 
     // Try ExplanationOfBenefit first (more commonly supported for billing)
     try {
-      const response = await fetch(`${baseUrl}/ema/fhir/v2/ExplanationOfBenefit`, {
+      const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/ExplanationOfBenefit`, {
         method: 'GET',
         headers: {
           'accept': 'application/fhir+json',
@@ -87,15 +108,24 @@ export async function fetchPatientBalances(accessToken: string) {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        return { success: true, data };
+        const text = await response.text();
+        if (!text.trim()) {
+          throw new Error('Empty response from ExplanationOfBenefit endpoint');
+        }
+
+        try {
+          const data = JSON.parse(text);
+          return { success: true, data };
+        } catch (parseError) {
+          throw new Error(`Invalid JSON response from ExplanationOfBenefit: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+        }
       }
     } catch (eobError) {
       console.warn('ExplanationOfBenefit not available, trying Account resource');
     }
 
     // Fallback to Account if ExplanationOfBenefit fails
-    const response = await fetch(`${baseUrl}/ema/fhir/v2/Account`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Account`, {
       method: 'GET',
       headers: {
         'accept': 'application/fhir+json',
@@ -107,7 +137,7 @@ export async function fetchPatientBalances(accessToken: string) {
     if (!response.ok) {
       // If Account also fails, try Claim as another fallback
       try {
-        const claimResponse = await fetch(`${baseUrl}/ema/fhir/v2/Claim`, {
+        const claimResponse = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Claim`, {
           method: 'GET',
           headers: {
             'accept': 'application/fhir+json',
@@ -117,8 +147,17 @@ export async function fetchPatientBalances(accessToken: string) {
         });
 
         if (claimResponse.ok) {
-          const data = await claimResponse.json();
-          return { success: true, data };
+          const text = await claimResponse.text();
+          if (!text.trim()) {
+            throw new Error('Empty response from Claim endpoint');
+          }
+
+          try {
+            const data = JSON.parse(text);
+            return { success: true, data };
+          } catch (parseError) {
+            throw new Error(`Invalid JSON response from Claim: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+          }
         }
       } catch (claimError) {
         console.warn('Claim resource also not available');
@@ -127,8 +166,17 @@ export async function fetchPatientBalances(accessToken: string) {
       throw new Error(`Balance fetch failed: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return { success: true, data };
+    const text = await response.text();
+    if (!text.trim()) {
+      throw new Error('Empty response from Account endpoint');
+    }
+
+    try {
+      const data = JSON.parse(text);
+      return { success: true, data };
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response from Account: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Failed to fetch patient balances' };
   }
@@ -137,13 +185,14 @@ export async function fetchPatientBalances(accessToken: string) {
 export async function fetchPaymentHistory(patientId: string, accessToken: string) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
+    const firmPrefix = process.env.FIRM_URL_PREFIX;
     const apiKey = process.env.API_KEY;
 
-    if (!baseUrl || !apiKey) {
+    if (!baseUrl || !firmPrefix || !apiKey) {
       throw new Error('Missing required environment variables');
     }
 
-    const response = await fetch(`${baseUrl}/ema/fhir/v2/PaymentNotice?requestor=${patientId}`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/PaymentNotice?requestor=${patientId}`, {
       method: 'GET',
       headers: {
         'accept': 'application/fhir+json',
@@ -156,8 +205,17 @@ export async function fetchPaymentHistory(patientId: string, accessToken: string
       throw new Error(`Payment history fetch failed: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return { success: true, data };
+    const text = await response.text();
+    if (!text.trim()) {
+      throw new Error('Empty response from PaymentNotice endpoint');
+    }
+
+    try {
+      const data = JSON.parse(text);
+      return { success: true, data };
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Failed to fetch payment history' };
   }
@@ -166,13 +224,14 @@ export async function fetchPaymentHistory(patientId: string, accessToken: string
 export async function fetchBillingCodes(accessToken: string) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
+    const firmPrefix = process.env.FIRM_URL_PREFIX;
     const apiKey = process.env.API_KEY;
 
-    if (!baseUrl || !apiKey) {
+    if (!baseUrl || !firmPrefix || !apiKey) {
       throw new Error('Missing required environment variables');
     }
 
-    const response = await fetch(`${baseUrl}/ema/fhir/v2/ChargeItem`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/ChargeItem`, {
       method: 'GET',
       headers: {
         'accept': 'application/fhir+json',
@@ -185,8 +244,17 @@ export async function fetchBillingCodes(accessToken: string) {
       throw new Error(`Billing codes fetch failed: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return { success: true, data };
+    const text = await response.text();
+    if (!text.trim()) {
+      throw new Error('Empty response from ChargeItem endpoint');
+    }
+
+    try {
+      const data = JSON.parse(text);
+      return { success: true, data };
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Failed to fetch billing codes' };
   }
@@ -195,9 +263,10 @@ export async function fetchBillingCodes(accessToken: string) {
 export async function searchBilling(searchParams: BillingSearchParams, accessToken: string) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
+    const firmPrefix = process.env.FIRM_URL_PREFIX;
     const apiKey = process.env.API_KEY;
 
-    if (!baseUrl || !apiKey) {
+    if (!baseUrl || !firmPrefix || !apiKey) {
       throw new Error('Missing required environment variables');
     }
 
@@ -216,8 +285,8 @@ export async function searchBilling(searchParams: BillingSearchParams, accessTok
     // Try ExplanationOfBenefit first
     try {
       const url = queryString
-        ? `${baseUrl}/ema/fhir/v2/ExplanationOfBenefit?${queryString}`
-        : `${baseUrl}/ema/fhir/v2/ExplanationOfBenefit`;
+        ? `${baseUrl}${firmPrefix}/fhir/v2/ExplanationOfBenefit?${queryString}`
+        : `${baseUrl}${firmPrefix}/fhir/v2/ExplanationOfBenefit`;
 
       const response = await fetch(url, {
         method: 'GET',
@@ -229,8 +298,17 @@ export async function searchBilling(searchParams: BillingSearchParams, accessTok
       });
 
       if (response.ok) {
-        const data = await response.json();
-        return { success: true, data };
+        const text = await response.text();
+        if (!text.trim()) {
+          throw new Error('Empty response from ExplanationOfBenefit endpoint');
+        }
+
+        try {
+          const data = JSON.parse(text);
+          return { success: true, data };
+        } catch (parseError) {
+          throw new Error(`Invalid JSON response from ExplanationOfBenefit: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+        }
       }
     } catch (eobError) {
       console.warn('ExplanationOfBenefit search not available, trying Account');
@@ -238,8 +316,8 @@ export async function searchBilling(searchParams: BillingSearchParams, accessTok
 
     // Fallback to Account
     const url = queryString
-      ? `${baseUrl}/ema/fhir/v2/Account?${queryString}`
-      : `${baseUrl}/ema/fhir/v2/Account`;
+      ? `${baseUrl}${firmPrefix}/fhir/v2/Account?${queryString}`
+      : `${baseUrl}${firmPrefix}/fhir/v2/Account`;
 
     const response = await fetch(url, {
       method: 'GET',
@@ -254,8 +332,17 @@ export async function searchBilling(searchParams: BillingSearchParams, accessTok
       throw new Error(`Billing search failed: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return { success: true, data };
+    const text = await response.text();
+    if (!text.trim()) {
+      throw new Error('Empty response from Account endpoint');
+    }
+
+    try {
+      const data = JSON.parse(text);
+      return { success: true, data };
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response from Account: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Failed to search billing records' };
   }
@@ -264,16 +351,17 @@ export async function searchBilling(searchParams: BillingSearchParams, accessTok
 export async function generateBillingReport(accessToken: string) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
+    const firmPrefix = process.env.FIRM_URL_PREFIX;
     const apiKey = process.env.API_KEY;
 
-    if (!baseUrl || !apiKey) {
+    if (!baseUrl || !firmPrefix || !apiKey) {
       throw new Error('Missing required environment variables');
     }
 
     // Try to fetch accounts/balances with fallback logic
     let accounts = { entry: [] };
     try {
-      const accountsRes = await fetch(`${baseUrl}/ema/fhir/v2/ExplanationOfBenefit`, {
+      const accountsRes = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/ExplanationOfBenefit`, {
         method: 'GET',
         headers: {
           'accept': 'application/fhir+json',
@@ -283,10 +371,17 @@ export async function generateBillingReport(accessToken: string) {
       });
 
       if (accountsRes.ok) {
-        accounts = await accountsRes.json();
+        const text = await accountsRes.text();
+        if (text.trim()) {
+          try {
+            accounts = JSON.parse(text);
+          } catch (parseError) {
+            console.warn(`Invalid JSON response from ExplanationOfBenefit: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+          }
+        }
       } else {
         // Fallback to Account
-        const accountRes = await fetch(`${baseUrl}/ema/fhir/v2/Account`, {
+        const accountRes = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Account`, {
           method: 'GET',
           headers: {
             'accept': 'application/fhir+json',
@@ -295,7 +390,14 @@ export async function generateBillingReport(accessToken: string) {
           }
         });
         if (accountRes.ok) {
-          accounts = await accountRes.json();
+          const text = await accountRes.text();
+          if (text.trim()) {
+            try {
+              accounts = JSON.parse(text);
+            } catch (parseError) {
+              console.warn(`Invalid JSON response from Account: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+            }
+          }
         }
       }
     } catch (accountError) {
@@ -305,7 +407,7 @@ export async function generateBillingReport(accessToken: string) {
     // Fetch charges (ChargeItem)
     let charges = { entry: [] };
     try {
-      const chargesRes = await fetch(`${baseUrl}/ema/fhir/v2/ChargeItem`, {
+      const chargesRes = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/ChargeItem`, {
         method: 'GET',
         headers: {
           'accept': 'application/fhir+json',
@@ -315,7 +417,14 @@ export async function generateBillingReport(accessToken: string) {
       });
 
       if (chargesRes.ok) {
-        charges = await chargesRes.json();
+        const text = await chargesRes.text();
+        if (text.trim()) {
+          try {
+            charges = JSON.parse(text);
+          } catch (parseError) {
+            console.warn(`Invalid JSON response from ChargeItem: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+          }
+        }
       }
     } catch (chargeError) {
       console.warn('Could not fetch charge data for report');
@@ -324,7 +433,7 @@ export async function generateBillingReport(accessToken: string) {
     // Fetch payments (PaymentNotice)
     let payments = { entry: [] };
     try {
-      const paymentsRes = await fetch(`${baseUrl}/ema/fhir/v2/PaymentNotice`, {
+      const paymentsRes = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/PaymentNotice`, {
         method: 'GET',
         headers: {
           'accept': 'application/fhir+json',
@@ -334,7 +443,14 @@ export async function generateBillingReport(accessToken: string) {
       });
 
       if (paymentsRes.ok) {
-        payments = await paymentsRes.json();
+        const text = await paymentsRes.text();
+        if (text.trim()) {
+          try {
+            payments = JSON.parse(text);
+          } catch (parseError) {
+            console.warn(`Invalid JSON response from PaymentNotice: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+          }
+        }
       }
     } catch (paymentError) {
       console.warn('Could not fetch payment data for report');

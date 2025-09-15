@@ -45,8 +45,17 @@ export async function fetchPatientById(patientId: string, accessToken: string) {
       throw new Error(`Patient fetch failed: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return { success: true, data };
+    const text = await response.text();
+    if (!text.trim()) {
+      throw new Error('Empty response from patient endpoint');
+    }
+
+    try {
+      const data = JSON.parse(text);
+      return { success: true, data };
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Failed to fetch patient' };
   }
@@ -75,8 +84,17 @@ export async function fetchPatients(accessToken: string, customCredentials?: { b
       throw new Error(`Patient fetch failed: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return { success: true, data };
+    const text = await response.text();
+    if (!text.trim()) {
+      throw new Error('Empty response from patient endpoint');
+    }
+
+    try {
+      const data = JSON.parse(text);
+      return { success: true, data };
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Failed to fetch patients' };
   }
@@ -108,8 +126,17 @@ export async function updatePatient(patientId: string, patientData: Record<strin
       throw new Error(`Patient update failed: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return { success: true, data };
+    const text = await response.text();
+    if (!text.trim()) {
+      throw new Error('Empty response from patient endpoint');
+    }
+
+    try {
+      const data = JSON.parse(text);
+      return { success: true, data };
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Failed to update patient' };
   }
@@ -153,8 +180,17 @@ export async function searchPatients(searchParams: PatientSearchParams, accessTo
       throw new Error(`Patient search failed: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return { success: true, data };
+    const text = await response.text();
+    if (!text.trim()) {
+      throw new Error('Empty response from patient endpoint');
+    }
+
+    try {
+      const data = JSON.parse(text);
+      return { success: true, data };
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Failed to search patients' };
   }

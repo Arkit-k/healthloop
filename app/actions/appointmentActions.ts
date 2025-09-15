@@ -12,13 +12,14 @@ interface AppointmentSearchParams {
 export async function fetchAppointments(accessToken: string) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
+    const firmPrefix = process.env.FIRM_URL_PREFIX;
     const apiKey = process.env.API_KEY;
 
-    if (!baseUrl || !apiKey) {
+    if (!baseUrl || !firmPrefix || !apiKey) {
       throw new Error('Missing required environment variables');
     }
 
-    const response = await fetch(`${baseUrl}/ema/fhir/v2/Appointment`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Appointment`, {
       method: 'GET',
       headers: {
         'accept': 'application/fhir+json',
@@ -31,8 +32,17 @@ export async function fetchAppointments(accessToken: string) {
       throw new Error(`Appointment fetch failed: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return { success: true, data };
+    const text = await response.text();
+    if (!text.trim()) {
+      throw new Error('Empty response from appointment endpoint');
+    }
+
+    try {
+      const data = JSON.parse(text);
+      return { success: true, data };
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Failed to fetch appointments' };
   }
@@ -41,9 +51,10 @@ export async function fetchAppointments(accessToken: string) {
 export async function searchAppointments(searchParams: AppointmentSearchParams, accessToken: string) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
+    const firmPrefix = process.env.FIRM_URL_PREFIX;
     const apiKey = process.env.API_KEY;
 
-    if (!baseUrl || !apiKey) {
+    if (!baseUrl || !firmPrefix || !apiKey) {
       throw new Error('Missing required environment variables');
     }
 
@@ -59,8 +70,8 @@ export async function searchAppointments(searchParams: AppointmentSearchParams, 
 
     const queryString = queryParams.toString();
     const url = queryString
-      ? `${baseUrl}/ema/fhir/v2/Appointment?${queryString}`
-      : `${baseUrl}/ema/fhir/v2/Appointment`;
+      ? `${baseUrl}${firmPrefix}/fhir/v2/Appointment?${queryString}`
+      : `${baseUrl}${firmPrefix}/fhir/v2/Appointment`;
 
     const response = await fetch(url, {
       method: 'GET',
@@ -75,8 +86,17 @@ export async function searchAppointments(searchParams: AppointmentSearchParams, 
       throw new Error(`Appointment search failed: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return { success: true, data };
+    const text = await response.text();
+    if (!text.trim()) {
+      throw new Error('Empty response from appointment endpoint');
+    }
+
+    try {
+      const data = JSON.parse(text);
+      return { success: true, data };
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Failed to search appointments' };
   }
@@ -86,13 +106,14 @@ export async function searchAppointments(searchParams: AppointmentSearchParams, 
 export async function createAppointment(appointmentData: Record<string, unknown>, accessToken: string) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
+    const firmPrefix = process.env.FIRM_URL_PREFIX;
     const apiKey = process.env.API_KEY;
 
-    if (!baseUrl || !apiKey) {
+    if (!baseUrl || !firmPrefix || !apiKey) {
       throw new Error('Missing required environment variables');
     }
 
-    const response = await fetch(`${baseUrl}/ema/fhir/v2/Appointment`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Appointment`, {
       method: 'POST',
       headers: {
         'accept': 'application/fhir+json',
@@ -107,8 +128,17 @@ export async function createAppointment(appointmentData: Record<string, unknown>
       throw new Error(`Appointment creation failed: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return { success: true, data };
+    const text = await response.text();
+    if (!text.trim()) {
+      throw new Error('Empty response from appointment endpoint');
+    }
+
+    try {
+      const data = JSON.parse(text);
+      return { success: true, data };
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Failed to create appointment' };
   }
@@ -117,13 +147,14 @@ export async function createAppointment(appointmentData: Record<string, unknown>
 export async function updateAppointment(appointmentId: string, appointmentData: Record<string, unknown>, accessToken: string) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
+    const firmPrefix = process.env.FIRM_URL_PREFIX;
     const apiKey = process.env.API_KEY;
 
-    if (!baseUrl || !apiKey) {
+    if (!baseUrl || !firmPrefix || !apiKey) {
       throw new Error('Missing required environment variables');
     }
 
-    const response = await fetch(`${baseUrl}/ema/fhir/v2/Appointment/${appointmentId}`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Appointment/${appointmentId}`, {
       method: 'PUT',
       headers: {
         'accept': 'application/fhir+json',
@@ -138,8 +169,17 @@ export async function updateAppointment(appointmentId: string, appointmentData: 
       throw new Error(`Appointment update failed: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return { success: true, data };
+    const text = await response.text();
+    if (!text.trim()) {
+      throw new Error('Empty response from appointment endpoint');
+    }
+
+    try {
+      const data = JSON.parse(text);
+      return { success: true, data };
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Failed to update appointment' };
   }
@@ -148,9 +188,10 @@ export async function updateAppointment(appointmentId: string, appointmentData: 
 export async function cancelAppointment(appointmentId: string, accessToken: string) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
+    const firmPrefix = process.env.FIRM_URL_PREFIX;
     const apiKey = process.env.API_KEY;
 
-    if (!baseUrl || !apiKey) {
+    if (!baseUrl || !firmPrefix || !apiKey) {
       throw new Error('Missing required environment variables');
     }
 
@@ -161,7 +202,7 @@ export async function cancelAppointment(appointmentId: string, accessToken: stri
       status: 'cancelled'
     };
 
-    const response = await fetch(`${baseUrl}/ema/fhir/v2/Appointment/${appointmentId}`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Appointment/${appointmentId}`, {
       method: 'PUT',
       headers: {
         'accept': 'application/fhir+json',
@@ -176,8 +217,17 @@ export async function cancelAppointment(appointmentId: string, accessToken: stri
       throw new Error(`Appointment cancellation failed: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return { success: true, data };
+    const text = await response.text();
+    if (!text.trim()) {
+      throw new Error('Empty response from appointment endpoint');
+    }
+
+    try {
+      const data = JSON.parse(text);
+      return { success: true, data };
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Failed to cancel appointment' };
   }
@@ -187,14 +237,15 @@ export async function cancelAppointment(appointmentId: string, accessToken: stri
 export async function checkAppointmentConflicts(providerId: string, patientId: string, startTime: string, endTime: string, excludeAppointmentId?: string, accessToken?: string) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
+    const firmPrefix = process.env.FIRM_URL_PREFIX;
     const apiKey = process.env.API_KEY;
 
-    if (!baseUrl || !apiKey) {
+    if (!baseUrl || !firmPrefix || !apiKey) {
       throw new Error('Missing required environment variables');
     }
 
     // Check for overlapping appointments for the provider
-    const providerConflicts = await fetch(`${baseUrl}/ema/fhir/v2/Appointment?practitioner=${providerId}&date=${startTime.split('T')[0]}`, {
+    const providerConflicts = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Appointment?practitioner=${providerId}&date=${startTime.split('T')[0]}`, {
       method: 'GET',
       headers: {
         'accept': 'application/fhir+json',
@@ -204,7 +255,7 @@ export async function checkAppointmentConflicts(providerId: string, patientId: s
     });
 
     // Check for overlapping appointments for the patient
-    const patientConflicts = await fetch(`${baseUrl}/ema/fhir/v2/Appointment?patient=${patientId}&date=${startTime.split('T')[0]}`, {
+    const patientConflicts = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Appointment?patient=${patientId}&date=${startTime.split('T')[0]}`, {
       method: 'GET',
       headers: {
         'accept': 'application/fhir+json',
@@ -217,8 +268,27 @@ export async function checkAppointmentConflicts(providerId: string, patientId: s
       throw new Error('Conflict check failed');
     }
 
-    const providerData = await providerConflicts.json();
-    const patientData = await patientConflicts.json();
+    const providerText = await providerConflicts.text();
+    const patientText = await patientConflicts.text();
+
+    if (!providerText.trim()) {
+      throw new Error('Empty response from provider conflicts endpoint');
+    }
+    if (!patientText.trim()) {
+      throw new Error('Empty response from patient conflicts endpoint');
+    }
+
+    let providerData, patientData;
+    try {
+      providerData = JSON.parse(providerText);
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response from provider conflicts: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+    }
+    try {
+      patientData = JSON.parse(patientText);
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response from patient conflicts: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+    }
 
     const conflicts = [];
 
