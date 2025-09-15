@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 // Using simple div-based tabs instead of shadcn tabs component
 import { ThemeToggle } from '@/components/theme-toggle';
-import { ChevronRight, ExternalLink, Code, Database, Zap, Shield, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { ExternalLink, Code, Database, Zap, Shield, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 
 export default function DocumentationPage() {
   const [activeTab, setActiveTab] = useState('discovery');

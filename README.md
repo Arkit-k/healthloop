@@ -109,3 +109,50 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+### Deployment Prerequisites
+
+Before deploying to Vercel, ensure the following:
+
+1. **Fix ESLint Errors**: The build will fail if there are unescaped quotes in JSX. Check `app/documentation/page.tsx` line 979.
+
+2. **🔒 CRITICAL: Environment Variables Security**:
+   - **DO NOT** deploy with secrets in `.env` - this is a major security risk
+   - Move ALL sensitive credentials to Vercel's environment variables dashboard:
+     - `OAUTH_USERNAME`
+     - `OAUTH_PASSWORD`
+     - `API_KEY`
+     - `FHIR_PATIENT_ENDPOINT`
+     - `FHIR_OAUTH_ENDPOINT`
+   - Keep only `NEXT_PUBLIC_*` variables in `.env` for local development
+   - Ensure `.env` is in `.gitignore` to prevent accidental commits
+
+3. **Lockfile Cleanup**: Remove duplicate lockfiles. Keep `package-lock.json` and remove `bun.lockb` if present.
+
+4. **Local File Dependencies**: Ensure the `.api` directory is included in your repository or publish the `@api/emasample` package to npm.
+
+### Potential Deployment Issues
+
+#### Build Errors
+- **ESLint Errors**: Unescaped quotes in JSX will prevent deployment
+- **Multiple Lockfiles**: Can cause package manager conflicts
+- **Missing Dependencies**: Local file dependencies may not be included
+
+#### Runtime Issues
+- **Server Action Timeouts**: External API calls may exceed Vercel's 10s limit
+- **Environment Variables**: Missing or incorrect environment variables
+- **Network Errors**: FHIR API connectivity issues
+
+#### Configuration
+- **Next.js Config**: Consider adding `output: 'standalone'` for better compatibility
+- **Build Settings**: Ensure Node.js version matches your local environment
+
+### Troubleshooting
+
+If deployment fails:
+
+1. Run `npm run build` locally to identify build errors
+2. Check Vercel build logs for specific error messages
+3. Verify all environment variables are set in Vercel dashboard
+4. Ensure `.env` is not committed to repository (add to `.gitignore`)
+5. Test API endpoints locally before deployment
