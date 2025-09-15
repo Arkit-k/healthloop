@@ -44,6 +44,7 @@ export default function PatientDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
+  const [showSearchDialog, setShowSearchDialog] = useState(false);
 
   // Edit functionality state
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
@@ -62,11 +63,11 @@ export default function PatientDashboard() {
     count: '',
     _lastUpdated: '',
     'address-postalcode': '',
-    active: '',
+    active: 'any',
     birthdate: '',
     email: '',
     family: '',
-    gender: '',
+    gender: 'any',
     'general-practitioner': '',
     given: '',
     identifier: '',
@@ -131,10 +132,10 @@ export default function PatientDashboard() {
         return;
       }
 
-      // Filter out empty search parameters
+      // Filter out empty search parameters and "any" values
       const filteredParams: Record<string, string> = {};
       Object.entries(searchParams).forEach(([key, value]) => {
-        if (value.trim() !== '') {
+        if (value.trim() !== '' && value !== 'any') {
           filteredParams[key] = value.trim();
         }
       });
@@ -230,6 +231,7 @@ export default function PatientDashboard() {
       if (result.success && result.data) {
         const tokenData = result.data as TokenData;
         setTokens(tokenData);
+        // Automatically fetch patients after token generation
         await loadPatients(tokenData);
       } else if (!result.success && result.error) {
         setError(result.error);
@@ -242,12 +244,13 @@ export default function PatientDashboard() {
   };
 
   useEffect(() => {
-    // Try to load tokens from localStorage or generate new ones
+    // Try to load tokens from localStorage and automatically fetch patients
     const savedTokens = localStorage.getItem('oauth_tokens');
     if (savedTokens) {
       try {
         const tokenData = JSON.parse(savedTokens);
         setTokens(tokenData);
+        // Automatically fetch patients when tokens are loaded
         loadPatients(tokenData);
       } catch (err) {
         console.error('Failed to parse saved tokens');
@@ -263,22 +266,44 @@ export default function PatientDashboard() {
   }, [tokens]);
 
   return (
-    <div className="font-sans min-h-screen p-8 pb-20 gap-16 sm:p-20">
+    <div className="font-sans min-h-screen p-4 pb-20 gap-16 sm:p-6 lg:p-8 bg-background text-foreground">
       <main className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
+          <h1 className="text-2xl lg:text-3xl font-bold">Patient Dashboard</h1>
+          <div className="flex items-center gap-2 lg:gap-4 flex-wrap">
+            {tokens && (
+              <div className="flex items-center gap-2">
+                <Input
+                  id="patientId"
+                  type="text"
+                  value={patientId}
+                  onChange={(e) => setPatientId(e.target.value)}
+                  placeholder="Patient ID"
+                  className="w-28 lg:w-32 h-8 text-sm"
+                />
+                <Button
+                  onClick={() => loadPatientById(patientId)}
+                  disabled={loading || !patientId.trim()}
+                  size="sm"
+                  className="h-8 px-3"
+                >
+                  {loading ? '...' : 'Fetch'}
+                </Button>
+              </div>
+            )}
+            <Button
+              onClick={() => setShowSearchDialog(true)}
+              variant="outline"
+              size="sm"
+              className="whitespace-nowrap"
             >
-              ← Back to Home
-            </Link>
-            <h1 className="text-3xl font-bold">Patient Dashboard</h1>
+              Advanced Search
+            </Button>
+            <ThemeToggle />
           </div>
-          <ThemeToggle />
         </div>
 
-        <div className="mb-8 space-y-4">
+        <div className="mb-4 space-y-4">
           {!tokens && (
             <button
               onClick={handleGenerateAndFetch}
@@ -289,309 +314,252 @@ export default function PatientDashboard() {
             </button>
           )}
 
-          {tokens && (
-            <div className="flex gap-4">
-              <Button
-                onClick={() => loadPatients(tokens)}
-                disabled={loading}
-                size="lg"
-                className="mr-4"
-              >
-                {loading ? 'Loading...' : 'Fetch All Patients'}
-              </Button>
 
-              <Button
-                onClick={() => setShowSearch(!showSearch)}
-                variant="outline"
-                size="lg"
-              >
-                {showSearch ? 'Hide Search' : 'Advanced Search'}
-              </Button>
-            </div>
-          )}
-
-          {tokens && (
-            <div className="flex gap-4 items-end">
-              <div>
-                <label htmlFor="patientId" className="block text-sm font-medium mb-2">
-                  Patient ID
-                </label>
-                <input
-                  id="patientId"
-                  type="text"
-                  value={patientId}
-                  onChange={(e) => setPatientId(e.target.value)}
-                  placeholder="Enter patient ID"
-                  className="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-              <button
-                onClick={() => loadPatientById(patientId)}
-                disabled={loading || !patientId.trim()}
-                className="px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400"
-              >
-                {loading ? 'Loading...' : 'Fetch Patient by ID'}
-              </button>
-            </div>
-          )}
 
           {error && <p className="text-red-500 mt-4">Error: {error}</p>}
         </div>
 
-        {showSearch && tokens && (
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle>Advanced Patient Search</CardTitle>
-              <CardDescription>
+        <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
+          <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Advanced Patient Search</DialogTitle>
+              <DialogDescription>
                 Search patients using multiple criteria including demographics, contact information, and clinical data.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                <div className="space-y-2">
-                  <Label htmlFor="count">Count (max 50)</Label>
-                  <Input
-                    id="count"
-                    type="number"
-                    value={searchParams.count}
-                    onChange={(e) => handleSearchParamChange('count', e.target.value)}
-                    placeholder="50"
-                  />
-                </div>
+              </DialogDescription>
+            </DialogHeader>
 
-                <div className="space-y-2">
-                  <Label htmlFor="lastUpdated">Last Updated</Label>
-                  <Input
-                    id="lastUpdated"
-                    type="text"
-                    value={searchParams._lastUpdated}
-                    onChange={(e) => handleSearchParamChange('_lastUpdated', e.target.value)}
-                    placeholder="gt2024-01-01"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="active">Active Status</Label>
-                  <Select value={searchParams.active} onValueChange={(value) => handleSearchParamChange('active', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Any" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Any</SelectItem>
-                      <SelectItem value="true">Active</SelectItem>
-                      <SelectItem value="false">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="gender">Gender</Label>
-                  <Select value={searchParams.gender} onValueChange={(value) => handleSearchParamChange('gender', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Any" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Any</SelectItem>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="unknown">Unknown</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="family">Family Name</Label>
-                  <Input
-                    id="family"
-                    type="text"
-                    value={searchParams.family}
-                    onChange={(e) => handleSearchParamChange('family', e.target.value)}
-                    placeholder="Last name"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="given">Given Name</Label>
-                  <Input
-                    id="given"
-                    type="text"
-                    value={searchParams.given}
-                    onChange={(e) => handleSearchParamChange('given', e.target.value)}
-                    placeholder="First name"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="birthdate">Birth Date</Label>
-                  <Input
-                    id="birthdate"
-                    type="date"
-                    value={searchParams.birthdate}
-                    onChange={(e) => handleSearchParamChange('birthdate', e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={searchParams.email}
-                    onChange={(e) => handleSearchParamChange('email', e.target.value)}
-                    placeholder="patient@example.com"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={searchParams.phone}
-                    onChange={(e) => handleSearchParamChange('phone', e.target.value)}
-                    placeholder="Phone number"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="identifier">Identifier</Label>
-                  <Input
-                    id="identifier"
-                    type="text"
-                    value={searchParams.identifier}
-                    onChange={(e) => handleSearchParamChange('identifier', e.target.value)}
-                    placeholder="Patient ID or MRN"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="page">Page</Label>
-                  <Input
-                    id="page"
-                    type="number"
-                    value={searchParams.page}
-                    onChange={(e) => handleSearchParamChange('page', e.target.value)}
-                    placeholder="1"
-                  />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              <div className="space-y-2">
+                <Label htmlFor="count">Count (max 50)</Label>
+                <Input
+                  id="count"
+                  type="number"
+                  value={searchParams.count}
+                  onChange={(e) => handleSearchParamChange('count', e.target.value)}
+                  placeholder="50"
+                  className="bg-background border-border"
+                />
               </div>
 
-              <div className="flex gap-4">
-                <Button
-                  onClick={handleSearch}
-                  disabled={loading}
-                  className="bg-purple-600 hover:bg-purple-700"
-                >
-                  {loading ? 'Searching...' : 'Search Patients'}
-                </Button>
+              <div className="space-y-2">
+                <Label htmlFor="lastUpdated" className="text-gray-300">Last Updated</Label>
+                <Input
+                  id="lastUpdated"
+                  type="text"
+                  value={searchParams._lastUpdated}
+                  onChange={(e) => handleSearchParamChange('_lastUpdated', e.target.value)}
+                  placeholder="gt2024-01-01"
+                  className="bg-gray-800 border-gray-600 text-white"
+                />
+              </div>
 
-                <Button
-                  onClick={() => setSearchParams({
-                    count: '',
-                    _lastUpdated: '',
-                    'address-postalcode': '',
-                    active: '',
-                    birthdate: '',
-                    email: '',
-                    family: '',
-                    gender: '',
-                    'general-practitioner': '',
-                    given: '',
-                    identifier: '',
-                    language: '',
-                    page: '',
-                    phone: '',
-                    'us-core-ethnicity': '',
-                    'us-core-race': '',
-                    'referral-source': ''
-                  })}
-                  variant="outline"
-                >
-                  Clear Search
-                </Button>
+              <div className="space-y-2">
+                <Label htmlFor="active" className="text-gray-300">Active Status</Label>
+                <Select value={searchParams.active} onValueChange={(value) => handleSearchParamChange('active', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Any" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">Any</SelectItem>
+                    <SelectItem value="true">Active</SelectItem>
+                    <SelectItem value="false">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </CardContent>
-          </Card>
-        )}
 
-        {tokens && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-8">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
+              <div className="space-y-2">
+                <Label htmlFor="gender" className="text-gray-300">Gender</Label>
+                <Select value={searchParams.gender} onValueChange={(value) => handleSearchParamChange('gender', value)}>
+                  <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                    <SelectValue placeholder="Any" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">Any</SelectItem>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="unknown">Unknown</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-green-800">
-                  Authentication successful - Ready to fetch patient data
-                </p>
+
+              <div className="space-y-2">
+                <Label htmlFor="family" className="text-gray-300">Family Name</Label>
+                <Input
+                  id="family"
+                  type="text"
+                  value={searchParams.family}
+                  onChange={(e) => handleSearchParamChange('family', e.target.value)}
+                  placeholder="Last name"
+                  className="bg-gray-800 border-gray-600 text-white"
+                />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="given" className="text-gray-300">Given Name</Label>
+                <Input
+                  id="given"
+                  type="text"
+                  value={searchParams.given}
+                  onChange={(e) => handleSearchParamChange('given', e.target.value)}
+                  placeholder="First name"
+                  className="bg-gray-800 border-gray-600 text-white"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="birthdate" className="text-gray-300">Birth Date</Label>
+                <Input
+                  id="birthdate"
+                  type="date"
+                  value={searchParams.birthdate}
+                  onChange={(e) => handleSearchParamChange('birthdate', e.target.value)}
+                  className="bg-gray-800 border-gray-600 text-white"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-gray-300">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={searchParams.email}
+                  onChange={(e) => handleSearchParamChange('email', e.target.value)}
+                  placeholder="patient@example.com"
+                  className="bg-gray-800 border-gray-600 text-white"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-gray-300">Phone</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={searchParams.phone}
+                  onChange={(e) => handleSearchParamChange('phone', e.target.value)}
+                  placeholder="Phone number"
+                  className="bg-gray-800 border-gray-600 text-white"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="identifier" className="text-gray-300">Identifier</Label>
+                <Input
+                  id="identifier"
+                  type="text"
+                  value={searchParams.identifier}
+                  onChange={(e) => handleSearchParamChange('identifier', e.target.value)}
+                  placeholder="Patient ID or MRN"
+                  className="bg-gray-800 border-gray-600 text-white"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="page" className="text-gray-300">Page</Label>
+                <Input
+                  id="page"
+                  type="number"
+                  value={searchParams.page}
+                  onChange={(e) => handleSearchParamChange('page', e.target.value)}
+                  placeholder="1"
+                  className="bg-gray-800 border-gray-600 text-white"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button
+                onClick={() => setSearchParams({
+                  count: '',
+                  _lastUpdated: '',
+                  'address-postalcode': '',
+                  active: 'any',
+                  birthdate: '',
+                  email: '',
+                  family: '',
+                  gender: 'any',
+                  'general-practitioner': '',
+                  given: '',
+                  identifier: '',
+                  language: '',
+                  page: '',
+                  phone: '',
+                  'us-core-ethnicity': '',
+                  'us-core-race': '',
+                  'referral-source': ''
+                })}
+                variant="outline"
+                className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              >
+                Clear Search
+              </Button>
+              <Button
+                onClick={() => {
+                  handleSearch();
+                  setShowSearchDialog(false);
+                }}
+                disabled={loading}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {loading ? 'Searching...' : 'Search Patients'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+
+        {patients.length > 0 && (
+          <div className="mt-4">
+            <h2 className="text-2xl font-bold mb-6">Patients ({patients.length})</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {patients.map((patient) => (
+                <div key={patient.id} className="bg-card p-4 rounded-lg border border-border hover:bg-accent transition-colors">
+                  <div className="flex justify-between items-start mb-3">
+                    <h3 className="font-bold text-lg">
+                      {patient.name?.[0]?.given?.join(' ') || 'Unknown'} {patient.name?.[0]?.family || ''}
+                    </h3>
+                    <Button
+                      onClick={() => handleEditPatient(patient)}
+                      size="sm"
+                      variant="outline"
+                      className="bg-gray-600 border-gray-500 text-white hover:bg-gray-500"
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="font-medium text-muted-foreground">ID:</span>
+                    <span className="text-muted-foreground">{patient.id}</span>
+                    </div>
+                    {patient.birthDate && (
+                      <div className="flex justify-between">
+                        <span className="font-medium text-muted-foreground">Birth Date:</span>
+                        <span className="text-muted-foreground">{patient.birthDate}</span>
+                      </div>
+                    )}
+                    {patient.gender && (
+                      <div className="flex justify-between">
+                        <span className="font-medium text-muted-foreground">Gender:</span>
+                        <span className="text-muted-foreground capitalize">{patient.gender}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <Button asChild size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                      <Link href={`/patient/${patient.id}`}>
+                        View Details
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {patients.length > 0 && (
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle className="text-2xl">Patients ({patients.length})</CardTitle>
-              <CardDescription>
-                Complete patient records with demographics and clinical information
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {patients.map((patient) => (
-                  <Card key={patient.id} className="hover:shadow-lg transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <h3 className="font-bold text-lg">
-                          {patient.name?.[0]?.given?.join(' ') || 'Unknown'} {patient.name?.[0]?.family || ''}
-                        </h3>
-                        <Button
-                          onClick={() => handleEditPatient(patient)}
-                          size="sm"
-                          variant="outline"
-                        >
-                          Edit
-                        </Button>
-                      </div>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="font-medium">ID:</span>
-                          <span className="text-muted-foreground">{patient.id}</span>
-                        </div>
-                        {patient.birthDate && (
-                          <div className="flex justify-between">
-                            <span className="font-medium">Birth Date:</span>
-                            <span className="text-muted-foreground">{patient.birthDate}</span>
-                          </div>
-                        )}
-                        {patient.gender && (
-                          <div className="flex justify-between">
-                            <span className="font-medium">Gender:</span>
-                            <span className="text-muted-foreground capitalize">{patient.gender}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="mt-4 pt-4 border-t">
-                        <Button asChild size="sm" className="w-full">
-                          <Link href={`/patient/${patient.id}`}>
-                            View Details
-                          </Link>
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {patients.length === 0 && !loading && tokens && (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No patients found.</p>
+            <p className="text-muted-foreground text-lg">No patients found.</p>
           </div>
         )}
 

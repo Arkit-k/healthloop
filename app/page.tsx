@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { generateTokens } from './actions/tokenActions';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -17,6 +17,7 @@ interface TokenData {
 
 export default function Home() {
   const { addToast } = useToast();
+  const router = useRouter();
   const [tokens, setTokens] = useState<TokenData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +29,10 @@ export default function Home() {
       const result = await generateTokens();
       if (result.success && result.data) {
         setTokens(result.data as TokenData);
+        // Automatically redirect to patient dashboard after successful token generation
+        setTimeout(() => {
+          router.push('/dashboard/patient');
+        }, 1000); // Small delay to show success state
       } else if (!result.success && result.error) {
         setError(result.error);
         addToast(errorToast('Error', result.error));
@@ -90,15 +95,6 @@ export default function Home() {
           </Card>
         )}
 
-        {tokens && (
-          <div className="mt-8">
-            <Button asChild size="lg" className="bg-green-600 hover:bg-green-700">
-              <Link href="/dashboard/patient">
-                View Patient Dashboard →
-              </Link>
-            </Button>
-          </div>
-        )}
       </main>
     </div>
   );
