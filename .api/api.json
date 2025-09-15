@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "apis": [
+    {
+      "identifier": "emasample",
+      "source": "@emasample/v1.0#66o3ejm84ap987",
+      "integrity": "sha512-3sLmL0OpxJjAhWlyMJbTIvSz+SqrTFlpUVHUQ2ICHyW1P/HtagprHye+eU7WMgtyA44GuUrUUAytv+UlPk+p/w==",
+      "installerVersion": "6.1.3"
+    }
+  ]
+}
