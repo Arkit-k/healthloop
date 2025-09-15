@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast, successToast, errorToast } from '@/components/toast';
-import { Settings, Key, User, Lock, Globe } from 'lucide-react';
+import { Settings, Key, User, Globe } from 'lucide-react';
 
 interface ApiCredentials {
   baseUrl: string;
@@ -43,7 +43,7 @@ export default function SettingsModal({ isOpen, onClose, onSave }: SettingsModal
       try {
         const parsed = JSON.parse(savedCredentials);
         setCredentials(parsed);
-      } catch (error) {
+      } catch {
         console.error('Failed to parse saved credentials');
       }
     }
@@ -78,7 +78,7 @@ export default function SettingsModal({ isOpen, onClose, onSave }: SettingsModal
       setTimeout(() => {
         onClose();
       }, 1500);
-    } catch (error) {
+    } catch {
       addToast(errorToast('Error', 'Failed to save credentials'));
     } finally {
       setIsLoading(false);
