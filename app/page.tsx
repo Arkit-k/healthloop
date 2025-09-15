@@ -1,7 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { generateTokens } from './actions';
+import { generateTokens } from './actions/tokenActions';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { useToast, errorToast } from '@/components/toast';
 
 interface TokenData {
   access_token: string;
@@ -11,6 +16,7 @@ interface TokenData {
 }
 
 export default function Home() {
+  const { addToast } = useToast();
   const [tokens, setTokens] = useState<TokenData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,9 +30,12 @@ export default function Home() {
         setTokens(result.data as TokenData);
       } else if (!result.success && result.error) {
         setError(result.error);
+        addToast(errorToast('Error', result.error));
       }
     } catch (err) {
-      setError('An error occurred');
+      const errorMessage = 'An error occurred';
+      setError(errorMessage);
+      addToast(errorToast('Error', errorMessage));
     } finally {
       setLoading(false);
     }
@@ -34,38 +43,60 @@ export default function Home() {
 
   return (
     <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
+      <header className="row-start-1 flex justify-end w-full max-w-4xl">
+        <ThemeToggle />
+      </header>
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
         <h1 className="text-2xl font-bold">OAuth2 Tokens</h1>
 
-        <button
+        <Button
           onClick={handleGenerate}
           disabled={loading}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
+          size="lg"
         >
           {loading ? 'Generating...' : 'Generate Tokens'}
-        </button>
+        </Button>
 
         {error && <p className="text-red-500">Error: {error}</p>}
 
         {tokens && (
-          <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg w-full max-w-md">
-            <h2 className="text-lg font-semibold mb-4">Token Details</h2>
-            <div className="space-y-2">
-              <div>
-                <strong>Access Token:</strong>
-                <p className="break-all text-sm">{tokens.access_token}</p>
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Token Details</CardTitle>
+              <CardDescription>
+                OAuth 2.0 access token for FHIR API authentication
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium">Access Token:</label>
+                  <p className="break-all text-sm mt-1 font-mono bg-muted p-2 rounded">{tokens.access_token}</p>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">Token Type:</span>
+                  <span className="text-sm text-muted-foreground">{tokens.token_type}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">Expires In:</span>
+                  <span className="text-sm text-muted-foreground">{tokens.expires_in} seconds</span>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Refresh Token:</label>
+                  <p className="break-all text-sm mt-1 font-mono bg-muted p-2 rounded">{tokens.refresh_token}</p>
+                </div>
               </div>
-              <div>
-                <strong>Token Type:</strong> {tokens.token_type}
-              </div>
-              <div>
-                <strong>Expires In:</strong> {tokens.expires_in} seconds
-              </div>
-              <div>
-                <strong>Refresh Token:</strong>
-                <p className="break-all text-sm">{tokens.refresh_token}</p>
-              </div>
-            </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {tokens && (
+          <div className="mt-8">
+            <Button asChild size="lg" className="bg-green-600 hover:bg-green-700">
+              <Link href="/dashboard/patient">
+                View Patient Dashboard →
+              </Link>
+            </Button>
           </div>
         )}
       </main>
