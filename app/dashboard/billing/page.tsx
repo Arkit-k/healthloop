@@ -19,6 +19,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { useToast, successToast, errorToast } from '@/components/toast';
 import { Pagination } from '@/components/ui/pagination';
 import { ChevronDown, ChevronRight, Settings } from 'lucide-react';
+import SettingsModal from '@/components/settings-modal';
 
 interface TokenData {
   access_token: string;
@@ -93,13 +94,8 @@ export default function BillingDashboard() {
   } | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
 
-  // Credentials state for production API testing
-  const [showCredentials, setShowCredentials] = useState(false);
-  const [credentials, setCredentials] = useState({
-    baseUrl: '',
-    apiKey: '',
-    useProduction: false
-  });
+  // Settings modal state
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   const loadInsuranceCoverage = async (tokenData: TokenData) => {
     setLoading(true);
@@ -238,23 +234,12 @@ export default function BillingDashboard() {
     }
   }, [tokens]);
 
-  useEffect(() => {
-    // Load saved credentials from localStorage
-    const savedCredentials = localStorage.getItem('dashboard_credentials');
-    if (savedCredentials) {
-      try {
-        const parsedCredentials = JSON.parse(savedCredentials);
-        setCredentials(parsedCredentials);
-      } catch (err) {
-        console.error('Failed to parse saved credentials');
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    // Save credentials to localStorage when they change
-    localStorage.setItem('dashboard_credentials', JSON.stringify(credentials));
-  }, [credentials]);
+  const handleSettingsSave = (credentials: { baseUrl: string; firmPrefix: string; apiKey: string; username: string; password: string }) => {
+    // Clear existing tokens when settings change
+    setTokens(null);
+    localStorage.removeItem('oauth_tokens');
+    addToast(successToast('Settings Updated', 'Please re-authenticate with your new credentials'));
+  };
 
   const totalPages = useMemo(() => {
     return Math.ceil(allCoverages.length / itemsPerPage);
@@ -300,74 +285,19 @@ export default function BillingDashboard() {
             >
               Generate Report
             </Button>
+            <Button
+              onClick={() => setShowSettingsModal(true)}
+              variant="outline"
+              size="sm"
+              className="whitespace-nowrap"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </Button>
             <ThemeToggle />
           </div>
         </div>
 
-        {/* Production Credentials Section */}
-        <Card className="mb-4">
-          <CardHeader className="pb-3">
-            <Button
-              variant="ghost"
-              className="w-full justify-between p-0 h-auto"
-              onClick={() => setShowCredentials(!showCredentials)}
-            >
-              <div className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                <span className="font-medium">Production API Credentials</span>
-                <span className="text-sm text-muted-foreground">(For testing official APIs)</span>
-              </div>
-              {showCredentials ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            </Button>
-            {showCredentials && (
-              <div className="pt-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="baseUrl">Base URL</Label>
-                    <Input
-                      id="baseUrl"
-                      type="url"
-                      value={credentials.baseUrl}
-                      onChange={(e) => setCredentials(prev => ({ ...prev, baseUrl: e.target.value }))}
-                      placeholder="https://api.example.com/fhir/v2"
-                      className="bg-background border-border"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="apiKey">API Key</Label>
-                    <Input
-                      id="apiKey"
-                      type="password"
-                      value={credentials.apiKey}
-                      onChange={(e) => setCredentials(prev => ({ ...prev, apiKey: e.target.value }))}
-                      placeholder="Your API key"
-                      className="bg-background border-border"
-                    />
-                  </div>
-                  <div className="flex items-center space-x-2 md:col-span-2">
-                    <input
-                      type="checkbox"
-                      id="useProduction"
-                      checked={credentials.useProduction}
-                      onChange={(e) => setCredentials(prev => ({ ...prev, useProduction: e.target.checked }))}
-                      className="rounded"
-                    />
-                    <Label htmlFor="useProduction" className="text-sm">
-                      Use production credentials for API calls
-                    </Label>
-                  </div>
-                </div>
-                {credentials.useProduction && (
-                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                    <p className="text-sm text-yellow-800">
-                      ⚠️ Production mode enabled. API calls will use the credentials above instead of environment variables.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </CardHeader>
-        </Card>
 
         <div className="mb-4 space-y-4">
           {!tokens && (
@@ -548,6 +478,12 @@ export default function BillingDashboard() {
           </div>
         )}
 
+        {/* Settings Modal */}
+        <SettingsModal
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          onSave={handleSettingsSave}
+        />
       </main>
     </div>
   );

@@ -19,7 +19,7 @@ export async function fetchAppointments(accessToken: string) {
       throw new Error('Missing required environment variables');
     }
 
-    const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Appointment`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/Appointment`, {
       method: 'GET',
       headers: {
         'accept': 'application/fhir+json',
@@ -70,8 +70,8 @@ export async function searchAppointments(searchParams: AppointmentSearchParams, 
 
     const queryString = queryParams.toString();
     const url = queryString
-      ? `${baseUrl}${firmPrefix}/fhir/v2/Appointment?${queryString}`
-      : `${baseUrl}${firmPrefix}/fhir/v2/Appointment`;
+      ? `${baseUrl}${firmPrefix}/ema/fhir/v2/Appointment?${queryString}`
+      : `${baseUrl}${firmPrefix}/ema/fhir/v2/Appointment`;
 
     const response = await fetch(url, {
       method: 'GET',
@@ -113,7 +113,7 @@ export async function createAppointment(appointmentData: Record<string, unknown>
       throw new Error('Missing required environment variables');
     }
 
-    const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Appointment`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/Appointment`, {
       method: 'POST',
       headers: {
         'accept': 'application/fhir+json',
@@ -154,7 +154,7 @@ export async function updateAppointment(appointmentId: string, appointmentData: 
       throw new Error('Missing required environment variables');
     }
 
-    const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Appointment/${appointmentId}`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/Appointment/${appointmentId}`, {
       method: 'PUT',
       headers: {
         'accept': 'application/fhir+json',
@@ -202,7 +202,7 @@ export async function cancelAppointment(appointmentId: string, accessToken: stri
       status: 'cancelled'
     };
 
-    const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Appointment/${appointmentId}`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/Appointment/${appointmentId}`, {
       method: 'PUT',
       headers: {
         'accept': 'application/fhir+json',
@@ -245,7 +245,7 @@ export async function checkAppointmentConflicts(providerId: string, patientId: s
     }
 
     // Check for overlapping appointments for the provider
-    const providerConflicts = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Appointment?practitioner=${providerId}&date=${startTime.split('T')[0]}`, {
+    const providerConflicts = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/Appointment?practitioner=${providerId}&date=${startTime.split('T')[0]}`, {
       method: 'GET',
       headers: {
         'accept': 'application/fhir+json',
@@ -255,7 +255,7 @@ export async function checkAppointmentConflicts(providerId: string, patientId: s
     });
 
     // Check for overlapping appointments for the patient
-    const patientConflicts = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Appointment?patient=${patientId}&date=${startTime.split('T')[0]}`, {
+    const patientConflicts = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/Appointment?patient=${patientId}&date=${startTime.split('T')[0]}`, {
       method: 'GET',
       headers: {
         'accept': 'application/fhir+json',

@@ -18,7 +18,7 @@ export async function fetchInsuranceCoverage(accessToken: string) {
       throw new Error('Missing required environment variables');
     }
 
-    const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Coverage`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/Coverage`, {
       method: 'GET',
       headers: {
         'accept': 'application/fhir+json',
@@ -57,7 +57,7 @@ export async function checkInsuranceEligibility(patientId: string, accessToken: 
       throw new Error('Missing required environment variables');
     }
 
-    const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Coverage?beneficiary=${patientId}`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/Coverage?beneficiary=${patientId}`, {
       method: 'GET',
       headers: {
         'accept': 'application/fhir+json',
@@ -98,7 +98,7 @@ export async function fetchPatientBalances(accessToken: string) {
 
     // Try ExplanationOfBenefit first (more commonly supported for billing)
     try {
-      const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/ExplanationOfBenefit`, {
+      const response = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/ExplanationOfBenefit`, {
         method: 'GET',
         headers: {
           'accept': 'application/fhir+json',
@@ -125,7 +125,7 @@ export async function fetchPatientBalances(accessToken: string) {
     }
 
     // Fallback to Account if ExplanationOfBenefit fails
-    const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Account`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/Account`, {
       method: 'GET',
       headers: {
         'accept': 'application/fhir+json',
@@ -137,7 +137,7 @@ export async function fetchPatientBalances(accessToken: string) {
     if (!response.ok) {
       // If Account also fails, try Claim as another fallback
       try {
-        const claimResponse = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Claim`, {
+        const claimResponse = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/Claim`, {
           method: 'GET',
           headers: {
             'accept': 'application/fhir+json',
@@ -192,7 +192,7 @@ export async function fetchPaymentHistory(patientId: string, accessToken: string
       throw new Error('Missing required environment variables');
     }
 
-    const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/PaymentNotice?requestor=${patientId}`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/PaymentNotice?requestor=${patientId}`, {
       method: 'GET',
       headers: {
         'accept': 'application/fhir+json',
@@ -231,7 +231,7 @@ export async function fetchBillingCodes(accessToken: string) {
       throw new Error('Missing required environment variables');
     }
 
-    const response = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/ChargeItem`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/ChargeItem`, {
       method: 'GET',
       headers: {
         'accept': 'application/fhir+json',
@@ -285,8 +285,8 @@ export async function searchBilling(searchParams: BillingSearchParams, accessTok
     // Try ExplanationOfBenefit first
     try {
       const url = queryString
-        ? `${baseUrl}${firmPrefix}/fhir/v2/ExplanationOfBenefit?${queryString}`
-        : `${baseUrl}${firmPrefix}/fhir/v2/ExplanationOfBenefit`;
+        ? `${baseUrl}${firmPrefix}/ema/fhir/v2/ExplanationOfBenefit?${queryString}`
+        : `${baseUrl}${firmPrefix}/ema/fhir/v2/ExplanationOfBenefit`;
 
       const response = await fetch(url, {
         method: 'GET',
@@ -316,8 +316,8 @@ export async function searchBilling(searchParams: BillingSearchParams, accessTok
 
     // Fallback to Account
     const url = queryString
-      ? `${baseUrl}${firmPrefix}/fhir/v2/Account?${queryString}`
-      : `${baseUrl}${firmPrefix}/fhir/v2/Account`;
+      ? `${baseUrl}${firmPrefix}/ema/fhir/v2/Account?${queryString}`
+      : `${baseUrl}${firmPrefix}/ema/fhir/v2/Account`;
 
     const response = await fetch(url, {
       method: 'GET',
@@ -361,7 +361,7 @@ export async function generateBillingReport(accessToken: string) {
     // Try to fetch accounts/balances with fallback logic
     let accounts = { entry: [] };
     try {
-      const accountsRes = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/ExplanationOfBenefit`, {
+      const accountsRes = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/ExplanationOfBenefit`, {
         method: 'GET',
         headers: {
           'accept': 'application/fhir+json',
@@ -381,7 +381,7 @@ export async function generateBillingReport(accessToken: string) {
         }
       } else {
         // Fallback to Account
-        const accountRes = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/Account`, {
+        const accountRes = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/Account`, {
           method: 'GET',
           headers: {
             'accept': 'application/fhir+json',
@@ -407,7 +407,7 @@ export async function generateBillingReport(accessToken: string) {
     // Fetch charges (ChargeItem)
     let charges = { entry: [] };
     try {
-      const chargesRes = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/ChargeItem`, {
+      const chargesRes = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/ChargeItem`, {
         method: 'GET',
         headers: {
           'accept': 'application/fhir+json',
@@ -433,7 +433,7 @@ export async function generateBillingReport(accessToken: string) {
     // Fetch payments (PaymentNotice)
     let payments = { entry: [] };
     try {
-      const paymentsRes = await fetch(`${baseUrl}${firmPrefix}/fhir/v2/PaymentNotice`, {
+      const paymentsRes = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/PaymentNotice`, {
         method: 'GET',
         headers: {
           'accept': 'application/fhir+json',

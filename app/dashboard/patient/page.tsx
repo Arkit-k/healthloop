@@ -15,7 +15,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useToast, successToast, errorToast } from '@/components/toast';
 import { Pagination } from '@/components/ui/pagination';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Settings } from 'lucide-react';
+import SettingsModal from '@/components/settings-modal';
 
 interface TokenData {
   access_token: string;
@@ -39,6 +40,14 @@ interface Bundle {
   entry?: BundleEntry[];
 }
 
+interface ApiCredentials {
+  baseUrl: string;
+  firmPrefix: string;
+  apiKey: string;
+  username: string;
+  password: string;
+}
+
 export default function PatientDashboard() {
   const { addToast } = useToast();
   const router = useRouter();
@@ -50,6 +59,7 @@ export default function PatientDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [showSearchDialog, setShowSearchDialog] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
@@ -99,7 +109,47 @@ export default function PatientDashboard() {
         setCurrentPage(1); // Reset to first page when loading new data
         updatePaginatedPatients(allPatientData, 1);
       } else if (!result.success && result.error) {
-        setError(result.error);
+        // Check if it's a 403 Forbidden error (token expired/invalid)
+        if (result.error.includes('403') || result.error.includes('Forbidden')) {
+          // Try to refresh the token
+          try {
+            const refreshResult = await fetch('/api/refresh-token', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ refreshToken: tokenData.refresh_token }),
+            });
+
+            if (refreshResult.ok) {
+              const newTokenData = await refreshResult.json();
+              setTokens(newTokenData);
+              // Retry with new token
+              const retryResult = await fetchPatients(newTokenData.access_token);
+              if (retryResult.success && retryResult.data) {
+                const bundle = retryResult.data as Bundle;
+                const allPatientData = bundle.entry?.map((e) => e.resource) || [];
+                setAllPatients(allPatientData);
+                setCurrentPage(1);
+                updatePaginatedPatients(allPatientData, 1);
+              } else {
+                setError('Token refresh failed. Please re-authenticate.');
+                setTokens(null);
+                localStorage.removeItem('oauth_tokens');
+              }
+            } else {
+              setError('Token expired. Please re-authenticate.');
+              setTokens(null);
+              localStorage.removeItem('oauth_tokens');
+            }
+          } catch (refreshErr) {
+            setError('Token refresh failed. Please re-authenticate.');
+            setTokens(null);
+            localStorage.removeItem('oauth_tokens');
+          }
+        } else {
+          setError(result.error);
+        }
       }
     } catch (err) {
       setError('Failed to fetch patients');
@@ -138,7 +188,43 @@ export default function PatientDashboard() {
       if (result.success && result.data) {
         setPatients([result.data as unknown as Patient]); // Single patient in array for consistent UI
       } else if (!result.success && result.error) {
-        setError(result.error);
+        // Check if it's a 403 Forbidden error (token expired/invalid)
+        if (result.error.includes('403') || result.error.includes('Forbidden')) {
+          // Try to refresh the token
+          try {
+            const refreshResult = await fetch('/api/refresh-token', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ refreshToken: tokens.refresh_token }),
+            });
+
+            if (refreshResult.ok) {
+              const newTokenData = await refreshResult.json();
+              setTokens(newTokenData);
+              // Retry with new token
+              const retryResult = await fetchPatientById(id, newTokenData.access_token);
+              if (retryResult.success && retryResult.data) {
+                setPatients([retryResult.data as unknown as Patient]);
+              } else {
+                setError('Token refresh failed. Please re-authenticate.');
+                setTokens(null);
+                localStorage.removeItem('oauth_tokens');
+              }
+            } else {
+              setError('Token expired. Please re-authenticate.');
+              setTokens(null);
+              localStorage.removeItem('oauth_tokens');
+            }
+          } catch (refreshErr) {
+            setError('Token refresh failed. Please re-authenticate.');
+            setTokens(null);
+            localStorage.removeItem('oauth_tokens');
+          }
+        } else {
+          setError(result.error);
+        }
       }
     } catch (err) {
       setError('Failed to fetch patient');
@@ -172,7 +258,47 @@ export default function PatientDashboard() {
         setCurrentPage(1); // Reset to first page when searching
         updatePaginatedPatients(searchResults, 1);
       } else if (!result.success && result.error) {
-        setError(result.error);
+        // Check if it's a 403 Forbidden error (token expired/invalid)
+        if (result.error.includes('403') || result.error.includes('Forbidden')) {
+          // Try to refresh the token
+          try {
+            const refreshResult = await fetch('/api/refresh-token', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ refreshToken: tokens.refresh_token }),
+            });
+
+            if (refreshResult.ok) {
+              const newTokenData = await refreshResult.json();
+              setTokens(newTokenData);
+              // Retry with new token
+              const retryResult = await searchPatients(filteredParams, newTokenData.access_token);
+              if (retryResult.success && retryResult.data) {
+                const bundle = retryResult.data as Bundle;
+                const searchResults = bundle.entry?.map((e) => e.resource) || [];
+                setAllPatients(searchResults);
+                setCurrentPage(1);
+                updatePaginatedPatients(searchResults, 1);
+              } else {
+                setError('Token refresh failed. Please re-authenticate.');
+                setTokens(null);
+                localStorage.removeItem('oauth_tokens');
+              }
+            } else {
+              setError('Token expired. Please re-authenticate.');
+              setTokens(null);
+              localStorage.removeItem('oauth_tokens');
+            }
+          } catch (refreshErr) {
+            setError('Token refresh failed. Please re-authenticate.');
+            setTokens(null);
+            localStorage.removeItem('oauth_tokens');
+          }
+        } else {
+          setError(result.error);
+        }
       }
     } catch (err) {
       setError('Failed to search patients');
@@ -253,6 +379,9 @@ export default function PatientDashboard() {
   const handleGenerateAndFetch = async () => {
     setLoading(true);
     setError(null);
+    // Clear any existing tokens to ensure fresh authentication
+    setTokens(null);
+    localStorage.removeItem('oauth_tokens');
     try {
       const result = await generateTokens();
       if (result.success && result.data) {
@@ -268,6 +397,13 @@ export default function PatientDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSettingsSave = (credentials: ApiCredentials) => {
+    // Clear existing tokens when settings change
+    setTokens(null);
+    localStorage.removeItem('oauth_tokens');
+    addToast(successToast('Settings Updated', 'Please re-authenticate with your new credentials'));
   };
 
   useEffect(() => {
@@ -338,6 +474,15 @@ export default function PatientDashboard() {
               className="whitespace-nowrap"
             >
               Advanced Search
+            </Button>
+            <Button
+              onClick={() => setShowSettingsModal(true)}
+              variant="outline"
+              size="sm"
+              className="whitespace-nowrap"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
             </Button>
             <ThemeToggle />
           </div>
@@ -725,6 +870,13 @@ export default function PatientDashboard() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Settings Modal */}
+        <SettingsModal
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          onSave={handleSettingsSave}
+        />
       </main>
     </div>
   );

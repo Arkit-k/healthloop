@@ -1,6 +1,20 @@
 'use server';
 
+// Helper function to get API credentials
+function getApiCredentials() {
+  // Check for user-configured credentials first, fallback to .env
+  const savedCredentials = typeof window !== 'undefined' ? localStorage.getItem('api_credentials') : null;
 
+  if (savedCredentials) {
+    return JSON.parse(savedCredentials);
+  } else {
+    return {
+      baseUrl: process.env.NEXT_PUBLIC_FHIR_BASE_URL,
+      firmPrefix: process.env.FIRM_URL_PREFIX,
+      apiKey: process.env.API_KEY
+    };
+  }
+}
 
 interface PatientSearchParams {
   count?: string; 
@@ -24,15 +38,13 @@ interface PatientSearchParams {
 
 export async function fetchPatientById(patientId: string, accessToken: string) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
-    const patientEndpoint = process.env.FHIR_PATIENT_ENDPOINT;
-    const apiKey = process.env.API_KEY;
+    const { baseUrl, firmPrefix, apiKey } = getApiCredentials();
 
-    if (!baseUrl || !patientEndpoint || !apiKey) {
+    if (!baseUrl || !firmPrefix || !apiKey) {
       throw new Error('Missing required environment variables');
     }
 
-    const response = await fetch(`${baseUrl}${patientEndpoint}/${patientId}`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/Patient/${patientId}`, {
       method: 'GET',
       headers: {
         'accept': 'application/fhir+json',
@@ -63,15 +75,15 @@ export async function fetchPatientById(patientId: string, accessToken: string) {
 
 export async function fetchPatients(accessToken: string, customCredentials?: { baseUrl?: string; apiKey?: string }) {
   try {
-    const baseUrl = customCredentials?.baseUrl || process.env.NEXT_PUBLIC_FHIR_BASE_URL;
-    const patientEndpoint = process.env.FHIR_PATIENT_ENDPOINT;
-    const apiKey = customCredentials?.apiKey || process.env.API_KEY;
+    const { baseUrl: defaultBaseUrl, firmPrefix, apiKey: defaultApiKey } = getApiCredentials();
+    const baseUrl = customCredentials?.baseUrl || defaultBaseUrl;
+    const apiKey = customCredentials?.apiKey || defaultApiKey;
 
-    if (!baseUrl || !patientEndpoint || !apiKey) {
+    if (!baseUrl || !firmPrefix || !apiKey) {
       throw new Error('Missing required environment variables');
     }
 
-    const response = await fetch(`${baseUrl}${patientEndpoint}`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/Patient`, {
       method: 'GET',
       headers: {
         'accept': 'application/fhir+json',
@@ -103,15 +115,13 @@ export async function fetchPatients(accessToken: string, customCredentials?: { b
 
 export async function updatePatient(patientId: string, patientData: Record<string, unknown>, accessToken: string) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
-    const patientEndpoint = process.env.FHIR_PATIENT_ENDPOINT;
-    const apiKey = process.env.API_KEY;
+    const { baseUrl, firmPrefix, apiKey } = getApiCredentials();
 
-    if (!baseUrl || !patientEndpoint || !apiKey) {
+    if (!baseUrl || !firmPrefix || !apiKey) {
       throw new Error('Missing required environment variables');
     }
 
-    const response = await fetch(`${baseUrl}${patientEndpoint}/${patientId}`, {
+    const response = await fetch(`${baseUrl}${firmPrefix}/ema/fhir/v2/Patient/${patientId}`, {
       method: 'PUT',
       headers: {
         'accept': 'application/fhir+json',
@@ -144,11 +154,9 @@ export async function updatePatient(patientId: string, patientData: Record<strin
 
 export async function searchPatients(searchParams: PatientSearchParams, accessToken: string) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_FHIR_BASE_URL;
-    const patientEndpoint = process.env.FHIR_PATIENT_ENDPOINT;
-    const apiKey = process.env.API_KEY;
+    const { baseUrl, firmPrefix, apiKey } = getApiCredentials();
 
-    if (!baseUrl || !patientEndpoint || !apiKey) {
+    if (!baseUrl || !firmPrefix || !apiKey) {
       throw new Error('Missing required environment variables');
     }
 
@@ -164,8 +172,8 @@ export async function searchPatients(searchParams: PatientSearchParams, accessTo
 
     const queryString = queryParams.toString();
     const url = queryString
-      ? `${baseUrl}${patientEndpoint}?${queryString}`
-      : `${baseUrl}${patientEndpoint}`;
+      ? `${baseUrl}${firmPrefix}/ema/fhir/v2/Patient?${queryString}`
+      : `${baseUrl}${firmPrefix}/ema/fhir/v2/Patient`;
 
     const response = await fetch(url, {
       method: 'GET',
