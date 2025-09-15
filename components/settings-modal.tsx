@@ -143,7 +143,7 @@ export default function SettingsModal({ isOpen, onClose, onSave }: SettingsModal
                   className="font-mono text-sm"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Your practice's unique identifier (without leading slash)
+                  Your practice&#39;s unique identifier (without leading slash)
                 </p>
               </div>
             </CardContent>
